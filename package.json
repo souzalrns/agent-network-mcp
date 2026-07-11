@@ -1,0 +1,21 @@
+{
+  "name": "agent-network-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Servidor MCP (rede de agentes LRNSdigital) para deploy no Vercel — expõe o router e os agentes de projeto como ferramentas MCP acessíveis diretamente do Claude.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "^15.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "mcp-handler": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "zod": "^3.23.8",
+    "@anthropic-ai/sdk": "^0.32.0",
+    "@supabase/supabase-js": "^2.45.0"
+  }
+}
