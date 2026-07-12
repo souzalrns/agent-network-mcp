@@ -7,7 +7,7 @@ import { getProjectState, logAction } from "../../../lib/memory.js";
 // do Gemini (AI Studio) não exige cartão de crédito e é generoso o
 // suficiente para o volume desta rede de agentes. Ver GEMINI_API_KEY no
 // .env.example para onde obter a chave.
-const GEMINI_MODEL = process.env.AGENT_MODEL || "gemini-2.5-flash";
+const GEMINI_MODEL = process.env.AGENT_MODEL || "gemini-flash-lite-latest";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 async function callGemini(systemPrompt, userMessage, maxTokens = 1500) {
