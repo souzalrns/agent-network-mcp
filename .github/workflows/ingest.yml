@@ -1,0 +1,41 @@
+name: Ingerir conhecimento
+
+# Dispara automaticamente sempre que um ficheiro novo/alterado aparecer na
+# pasta ingestion/ — não precisas de fazer nada manualmente, isto corre
+# sozinho a seguir a um git push feito pelo Claude ou por ti.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ingestion/**.json"
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detetar ficheiros novos/alterados
+        id: changed
+        run: |
+          echo "files<<EOF" >> "$GITHUB_OUTPUT"
+          git diff --name-only HEAD~1 HEAD -- 'ingestion/*.json' >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Enviar cada ficheiro para o endpoint de ingestão
+        env:
+          INGEST_URL: ${{ secrets.INGEST_URL }}
+          INGEST_SECRET: ${{ secrets.INGEST_SECRET }}
+        run: |
+          for file in ${{ steps.changed.outputs.files }}; do
+            echo "A ingerir: $file"
+            curl -sf -X POST "$INGEST_URL" \
+              -H "Content-Type: application/json" \
+              -H "x-ingest-secret: $INGEST_SECRET" \
+              --data-binary @"$file" \
+              && echo "OK: $file" \
+              || echo "FALHOU: $file"
+          done
