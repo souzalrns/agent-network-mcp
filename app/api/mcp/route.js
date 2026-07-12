@@ -1,7 +1,8 @@
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
 import { AGENTS } from "../../../lib/agents.js";
-import { getProjectState, logAction } from "../../../lib/memory.js";
+import { getProjectState, logAction, getClient } from "../../../lib/memory.js";
+import { retrieveContext } from "../../../lib/knowledge.js";
 
 // Usamos o Google Gemini em vez da API paga da Anthropic — o tier gratuito
 // do Gemini (AI Studio) não exige cartão de crédito e é generoso o
@@ -74,8 +75,19 @@ async function runAgent(agentId, userRequest) {
         .join("\n")
     : "(sem estado guardado ainda)";
 
+  // RAG: pesquisa a base de conhecimento real (não texto colado no prompt)
+  // antes de responder. Se não houver nada relevante ou a base estiver
+  // vazia/indisponível, isto devolve string vazia e o agente responde
+  // normalmente com o que já tem no systemPrompt.
+  const supabase = getClient();
+  const knowledge = await retrieveContext(supabase, agentId, userRequest);
+
+  const knowledgeBlock = knowledge
+    ? `\n\nConhecimento relevante recuperado da base de dados (usa isto como fonte primária quando aplicável, e cita a fonte):\n${knowledge}`
+    : "";
+
   const summary = await callGemini(
-    `${agent.systemPrompt}\n\nEstado atual conhecido do projeto:\n${stateSummary}`,
+    `${agent.systemPrompt}\n\nEstado atual conhecido do projeto:\n${stateSummary}${knowledgeBlock}`,
     userRequest,
     1500
   );
