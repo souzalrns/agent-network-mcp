@@ -1,41 +1,63 @@
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
-import Anthropic from "@anthropic-ai/sdk";
 import { AGENTS } from "../../../lib/agents.js";
 import { getProjectState, logAction } from "../../../lib/memory.js";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-const MODEL = process.env.AGENT_MODEL || "claude-haiku-4-5-20251001";
-const AGENT_MODEL = process.env.AGENT_EXEC_MODEL || "claude-sonnet-5";
+// Usamos o Google Gemini em vez da API paga da Anthropic — o tier gratuito
+// do Gemini (AI Studio) não exige cartão de crédito e é generoso o
+// suficiente para o volume desta rede de agentes. Ver GEMINI_API_KEY no
+// .env.example para onde obter a chave.
+const GEMINI_MODEL = process.env.AGENT_MODEL || "gemini-2.5-flash";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+async function callGemini(systemPrompt, userMessage, maxTokens = 1500) {
+  if (!GEMINI_API_KEY) {
+    throw new Error(
+      "GEMINI_API_KEY em falta. Cria uma chave gratuita em aistudio.google.com/apikey e adiciona-a nas Environment Variables do Vercel."
+    );
+  }
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      contents: [{ role: "user", parts: [{ text: userMessage }] }],
+      generationConfig: { maxOutputTokens: maxTokens },
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Erro na API Gemini (${res.status}): ${errText}`);
+  }
+
+  const data = await res.json();
+  const text =
+    data.candidates?.[0]?.content?.parts?.map((p) => p.text).join("") ?? "";
+  return text;
+}
 
 async function routeRequest(userRequest) {
   const agentList = Object.values(AGENTS)
     .map((a) => `- ${a.id}: ${a.description}`)
     .join("\n");
 
-  const response = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: 200,
-    system:
-      "És o router de um sistema multiagente. Classifica o pedido e devolve " +
+  const raw = await callGemini(
+    "És o router de um sistema multiagente. Classifica o pedido e devolve " +
       'APENAS um JSON: {"agent": "<id>", "reason": "<justificação curta>"}. ' +
-      'Se nenhum agente servir, devolve {"agent": null, "reason": "..."}.',
-    messages: [
-      {
-        role: "user",
-        content: `Agentes disponíveis:\n${agentList}\n\nPedido:\n"${userRequest}"`,
-      },
-    ],
-  });
+      'Se nenhum agente servir, devolve {"agent": null, "reason": "..."}. ' +
+      "Nunca uses markdown, blocos de código, nem texto fora do JSON.",
+    `Agentes disponíveis:\n${agentList}\n\nPedido:\n"${userRequest}"`,
+    200
+  );
 
-  const raw = response.content
-    .filter((b) => b.type === "text")
-    .map((b) => b.text)
-    .join("")
-    .trim();
+  const cleaned = raw.trim().replace(/^```json\s*|\s*```$/g, "");
 
   try {
-    return JSON.parse(raw);
+    return JSON.parse(cleaned);
   } catch {
     return { agent: null, reason: `Resposta não-JSON do router: ${raw}` };
   }
@@ -52,17 +74,11 @@ async function runAgent(agentId, userRequest) {
         .join("\n")
     : "(sem estado guardado ainda)";
 
-  const response = await anthropic.messages.create({
-    model: AGENT_MODEL,
-    max_tokens: 1500,
-    system: `${agent.systemPrompt}\n\nEstado atual conhecido do projeto:\n${stateSummary}`,
-    messages: [{ role: "user", content: userRequest }],
-  });
-
-  const summary = response.content
-    .filter((b) => b.type === "text")
-    .map((b) => b.text)
-    .join("\n");
+  const summary = await callGemini(
+    `${agent.systemPrompt}\n\nEstado atual conhecido do projeto:\n${stateSummary}`,
+    userRequest,
+    1500
+  );
 
   await logAction(agentId, agentId, summary.slice(0, 500));
   return summary;

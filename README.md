@@ -9,9 +9,9 @@ de router + agentes + memória corre por trás, sem precisares de terminal.
 
 1. No dashboard do Vercel: **Add New → Project** → importa este repositório.
 2. Em **Environment Variables**, adiciona (ver `.env.example`):
-   - `ANTHROPIC_API_KEY`
-   - `AGENT_MODEL` (opcional, default `claude-haiku-4-5-20251001`)
-   - `AGENT_EXEC_MODEL` (opcional, default `claude-sonnet-5`)
+   - `GEMINI_API_KEY` — chave **gratuita** do Google AI Studio, sem cartão de
+     crédito. Cria em https://aistudio.google.com/apikey
+   - `AGENT_MODEL` (opcional, default `gemini-2.5-flash`)
    - `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` (opcionais — sem isto os
      agentes funcionam mas sem memória persistente entre sessões)
 3. Deploy. O Vercel dá-te uma URL tipo `https://agent-network-mcp.vercel.app`.
