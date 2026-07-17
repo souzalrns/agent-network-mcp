@@ -1,0 +1,23 @@
+name: Manter Supabase ativo
+
+# Corre automaticamente a cada 3 dias — o Supabase pausa projetos
+# gratuitos após 7 dias sem atividade, por isso 3 dias dá margem de
+# segurança confortável, sem precisares de fazer nada manualmente.
+
+on:
+  schedule:
+    - cron: "0 9 */3 * *" # às 9h UTC, a cada 3 dias
+  workflow_dispatch: {} # também dá para correr manualmente no separador Actions
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pingar o endpoint de heartbeat
+        env:
+          INGEST_URL: ${{ secrets.INGEST_URL }}
+        run: |
+          BASE_URL="${INGEST_URL%/api/ingest}"
+          curl -sf "$BASE_URL/api/heartbeat" \
+            && echo "Heartbeat OK — Supabase mantido ativo" \
+            || echo "Heartbeat falhou — verificar manualmente"
