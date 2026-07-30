@@ -1,7 +1,12 @@
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
 import { AGENTS } from "../../../lib/agents.js";
-import { getProjectState, logAction, getClient } from "../../../lib/memory.js";
+import {
+  getProjectState,
+  setProjectState,
+  logAction,
+  getClient,
+} from "../../../lib/memory.js";
 import { retrieveContext } from "../../../lib/knowledge.js";
 
 // Usamos o Google Gemini em vez da API paga da Anthropic — o tier gratuito
@@ -64,6 +69,20 @@ async function routeRequest(userRequest) {
   }
 }
 
+/**
+ * Extrai, de forma leve e barata (sem nova chamada ao modelo grande),
+ * um resumo curto do que foi feito nesta interacção, para persistir em
+ * project_state sob a chave "last_interaction". Isto é o que fecha o
+ * ciclo: até agora só líamos project_state, nunca escrevíamos nada lá.
+ */
+function buildStateSnapshot(userRequest, summary) {
+  return {
+    request: userRequest.slice(0, 300),
+    summary: summary.slice(0, 500),
+    at: new Date().toISOString(),
+  };
+}
+
 async function runAgent(agentId, userRequest) {
   const agent = AGENTS[agentId];
   if (!agent) throw new Error(`Agente desconhecido: ${agentId}`);
@@ -93,6 +112,17 @@ async function runAgent(agentId, userRequest) {
   );
 
   await logAction(agentId, agentId, summary.slice(0, 500));
+
+  // Fecha o ciclo de memória: grava automaticamente um snapshot da
+  // interacção em project_state, para que a próxima chamada a este
+  // agente já veja "last_interaction" no stateSummary acima.
+  await setProjectState(
+    agentId,
+    "last_interaction",
+    buildStateSnapshot(userRequest, summary),
+    agentId
+  );
+
   return summary;
 }
 
@@ -164,6 +194,45 @@ const handler = createMcpHandler(
       async ({ agent, request }) => {
         const summary = await runAgent(agent, request);
         return { content: [{ type: "text", text: summary }] };
+      }
+    );
+
+    server.tool(
+      "save_project_state",
+      "Grava explicitamente um valor persistente no estado de um projeto " +
+        "(project_state), associado a uma chave. Útil para guardar decisões, " +
+        "pendências ou factos que devem estar disponíveis em conversas " +
+        "futuras com esse agente, além do snapshot automático de cada " +
+        "interação.",
+      {
+        agent: z
+          .enum(Object.keys(AGENTS))
+          .describe("ID do agente/projeto a que este estado pertence."),
+        key: z
+          .string()
+          .describe("Chave curta e descritiva (ex: 'pendencias', 'decisao_marca')."),
+        value: z
+          .string()
+          .describe("O valor a guardar, em texto livre ou JSON serializado."),
+      },
+      async ({ agent, key, value }) => {
+        let parsed;
+        try {
+          parsed = JSON.parse(value);
+        } catch {
+          parsed = value;
+        }
+        const result = await setProjectState(agent, key, parsed, agent);
+        return {
+          content: [
+            {
+              type: "text",
+              text: result.ok
+                ? `Estado guardado: ${agent}.${key}`
+                : `Falha ao guardar estado: ${result.reason}`,
+            },
+          ],
+        };
       }
     );
   },
