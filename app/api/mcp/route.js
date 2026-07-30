@@ -16,6 +16,16 @@ import { retrieveContext } from "../../../lib/knowledge.js";
 const GEMINI_MODEL = process.env.AGENT_MODEL || "gemini-flash-lite-latest";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
+// Diretiva partilhada de concisão: tokens de output custam tipicamente 3-10x
+// mais que os de input, e nem todos os 24 agentes têm instrução explícita
+// sobre isto no seu systemPrompt individual. Fica concatenada sempre da
+// mesma forma a cada chamada (ver runAgent), por isso não quebra o prefixo
+// estático que o Gemini cacheia — é só mais uma parte fixa desse prefixo.
+const CONCISION_DIRECTIVE =
+  "\n\nSê direto e conciso: evita preâmbulos, repetição do pedido e " +
+  "floreios. Estrutura a resposta só com o que for necessário para o " +
+  "pedido em causa.";
+
 async function callGemini(systemPrompt, userMessage, maxTokens = 1500) {
   if (!GEMINI_API_KEY) {
     throw new Error(
@@ -139,7 +149,11 @@ async function runAgent(agentId, userRequest) {
     `Estado atual conhecido do projeto:\n${stateSummary}${knowledgeBlock}` +
     `\n\nPedido:\n${userRequest}`;
 
-  const summary = await callGemini(agent.systemPrompt, userMessage, 1500);
+  const summary = await callGemini(
+    agent.systemPrompt + CONCISION_DIRECTIVE,
+    userMessage,
+    1500
+  );
 
   await logAction(agentId, agentId, summary.slice(0, 500));
 
