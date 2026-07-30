@@ -6,8 +6,6 @@ import {
   setProjectState,
   logAction,
   getClient,
-  logCacheMetric,
-  getCacheStats,
 } from "../../../lib/memory.js";
 import { retrieveContext } from "../../../lib/knowledge.js";
 
@@ -28,12 +26,7 @@ const CONCISION_DIRECTIVE =
   "floreios. Estrutura a resposta só com o que for necessário para o " +
   "pedido em causa.";
 
-async function callGemini(
-  systemPrompt,
-  userMessage,
-  maxTokens = 1500,
-  agentLabel = "router"
-) {
+async function callGemini(systemPrompt, userMessage, maxTokens = 1500) {
   if (!GEMINI_API_KEY) {
     throw new Error(
       "GEMINI_API_KEY em falta. Cria uma chave gratuita em aistudio.google.com/apikey e adiciona-a nas Environment Variables do Vercel."
@@ -46,11 +39,6 @@ async function callGemini(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      // systemInstruction TEM de ser byte-idêntico entre chamadas ao mesmo
-      // agente para o implicit caching do Gemini disparar (grátis, até 90%
-      // de desconto nos tokens de input em cache hit). Por isso nunca deve
-      // conter estado dinâmico (project_state, RAG) — isso vai sempre no
-      // "contents" (ver runAgent). Não mexer nesta separação sem motivo forte.
       systemInstruction: { parts: [{ text: systemPrompt }] },
       contents: [{ role: "user", parts: [{ text: userMessage }] }],
       generationConfig: { maxOutputTokens: maxTokens },
@@ -65,17 +53,6 @@ async function callGemini(
   const data = await res.json();
   const text =
     data.candidates?.[0]?.content?.parts?.map((p) => p.text).join("") ?? "";
-
-  // Observabilidade de cache: cachedContentTokenCount > 0 confirma que o
-  // implicit caching do Gemini está mesmo a bater. Gravado no Supabase
-  // (tabela cache_metrics) em vez de só console.log, para ser consultável
-  // via a tool get_cache_stats sem precisar de acesso aos logs do Vercel.
-  const usage = data.usageMetadata || {};
-  if (usage.promptTokenCount) {
-    const cached = usage.cachedContentTokenCount || 0;
-    await logCacheMetric(agentLabel, usage.promptTokenCount, cached);
-  }
-
   return text;
 }
 
@@ -155,8 +132,7 @@ async function runAgent(agentId, userRequest) {
   const summary = await callGemini(
     agent.systemPrompt + CONCISION_DIRECTIVE,
     userMessage,
-    1500,
-    agentId
+    1500
   );
 
   await logAction(agentId, agentId, summary.slice(0, 500));
@@ -278,51 +254,6 @@ const handler = createMcpHandler(
               text: result.ok
                 ? `Estado guardado: ${agent}.${key}`
                 : `Falha ao guardar estado: ${result.reason}`,
-            },
-          ],
-        };
-      }
-    );
-
-    server.tool(
-      "get_cache_stats",
-      "Devolve estatísticas do implicit caching do Gemini (hit rate global e " +
-        "por agente), calculadas a partir das últimas amostras registadas em " +
-        "Supabase. Útil para confirmar se a otimização de tokens está a " +
-        "funcionar, sem precisar de acesso aos logs do Vercel.",
-      {
-        limit: z
-          .number()
-          .optional()
-          .describe("Nº máximo de amostras recentes a considerar (default 200)."),
-      },
-      async ({ limit }) => {
-        const stats = await getCacheStats(limit || 200);
-        if (!stats) {
-          return {
-            content: [
-              {
-                type: "text",
-                text:
-                  "Ainda não há amostras suficientes em cache_metrics " +
-                  "(ou o Supabase não está configurado). Faz algumas " +
-                  "chamadas a agentes primeiro.",
-              },
-            ],
-          };
-        }
-        const perAgentText = stats.perAgent
-          .sort((a, b) => b.samples - a.samples)
-          .map((a) => `- ${a.agent}: ${a.hitRatePct}% (${a.samples} amostras)`)
-          .join("\n");
-        return {
-          content: [
-            {
-              type: "text",
-              text:
-                `Hit rate global: ${stats.overallHitRatePct}% ` +
-                `(${stats.totalCachedTokens}/${stats.totalPromptTokens} tokens, ` +
-                `${stats.samples} amostras)\n\nPor agente:\n${perAgentText}`,
             },
           ],
         };
