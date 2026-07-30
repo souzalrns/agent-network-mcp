@@ -29,6 +29,11 @@ async function callGemini(systemPrompt, userMessage, maxTokens = 1500) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
+      // systemInstruction TEM de ser byte-idêntico entre chamadas ao mesmo
+      // agente para o implicit caching do Gemini disparar (grátis, até 90%
+      // de desconto nos tokens de input em cache hit). Por isso nunca deve
+      // conter estado dinâmico (project_state, RAG) — isso vai sempre no
+      // "contents" (ver runAgent). Não mexer nesta separação sem motivo forte.
       systemInstruction: { parts: [{ text: systemPrompt }] },
       contents: [{ role: "user", parts: [{ text: userMessage }] }],
       generationConfig: { maxOutputTokens: maxTokens },
@@ -43,6 +48,21 @@ async function callGemini(systemPrompt, userMessage, maxTokens = 1500) {
   const data = await res.json();
   const text =
     data.candidates?.[0]?.content?.parts?.map((p) => p.text).join("") ?? "";
+
+  // Observabilidade de cache: cachedContentTokenCount > 0 confirma que o
+  // implicit caching do Gemini está mesmo a bater. Sem isto não há como
+  // saber se a separação system/contents está a funcionar na prática.
+  const usage = data.usageMetadata || {};
+  if (usage.promptTokenCount) {
+    const cached = usage.cachedContentTokenCount || 0;
+    const hitRate = cached
+      ? Math.round((cached / usage.promptTokenCount) * 100)
+      : 0;
+    console.log(
+      `[gemini-cache] prompt=${usage.promptTokenCount} cached=${cached} hit=${hitRate}%`
+    );
+  }
+
   return text;
 }
 
@@ -51,12 +71,17 @@ async function routeRequest(userRequest) {
     .map((a) => `- ${a.id}: ${a.description}`)
     .join("\n");
 
+  // agentList só muda quando um agente é adicionado/removido — por isso
+  // fica no systemInstruction (estático, cacheável), e não no user message.
+  // É a parte mais "pesada" do prompt do router, por isso é aqui que o
+  // implicit caching do Gemini rende mais.
   const raw = await callGemini(
     "És o router de um sistema multiagente. Classifica o pedido e devolve " +
       'APENAS um JSON: {"agent": "<id>", "reason": "<justificação curta>"}. ' +
       'Se nenhum agente servir, devolve {"agent": null, "reason": "..."}. ' +
-      "Nunca uses markdown, blocos de código, nem texto fora do JSON.",
-    `Agentes disponíveis:\n${agentList}\n\nPedido:\n"${userRequest}"`,
+      "Nunca uses markdown, blocos de código, nem texto fora do JSON.\n\n" +
+      `Agentes disponíveis:\n${agentList}`,
+    `Pedido:\n"${userRequest}"`,
     200
   );
 
@@ -105,11 +130,16 @@ async function runAgent(agentId, userRequest) {
     ? `\n\nConhecimento relevante recuperado da base de dados (usa isto como fonte primária quando aplicável, e cita a fonte):\n${knowledge}`
     : "";
 
-  const summary = await callGemini(
-    `${agent.systemPrompt}\n\nEstado atual conhecido do projeto:\n${stateSummary}${knowledgeBlock}`,
-    userRequest,
-    1500
-  );
+  // O systemPrompt do agente vai sozinho e sem alterações — é o prefixo
+  // estático que o Gemini pode cachear (grátis, implicit caching, até 90%
+  // de desconto). Tudo o que muda de chamada para chamada (estado do
+  // projeto, RAG, o pedido em si) vai no "contents", que nunca é cacheado
+  // mas também é normalmente muito mais pequeno que o systemPrompt.
+  const userMessage =
+    `Estado atual conhecido do projeto:\n${stateSummary}${knowledgeBlock}` +
+    `\n\nPedido:\n${userRequest}`;
+
+  const summary = await callGemini(agent.systemPrompt, userMessage, 1500);
 
   await logAction(agentId, agentId, summary.slice(0, 500));
 
