@@ -1,12 +1,16 @@
-name: Auditoria quinzenal de ferramentas gratuitas
+name: Auditoria quinzenal de ferramentas gratuitas e dependências
 
-# Corre a cada 14 dias. Verifica se as ferramentas gratuitas que já usamos
-# (yt-dlp, faster-whisper, playwright, pollinations) tiveram releases
-# recentes, e procura repositórios novos/em alta em categorias relevantes
-# (scraping, APIs grátis, self-hosted, transcrição, mcp-server, geração de
-# imagem/vídeo). Grava um relatório no Supabase para o Claude analisar e
-# reportar/incorporar diretamente na próxima conversa — sem custo, usa só
-# a API pública do GitHub.
+# Corre a cada 14 dias. Duas frentes:
+# 1) Verifica vulnerabilidades/dependências desatualizadas (Dependabot) em
+#    TODOS os repositórios ativos do Luiz — não só nas ferramentas que
+#    construímos, mas tudo o que está implantado em produção.
+# 2) Procura repositórios novos/em alta em categorias amplas relevantes aos
+#    negócios (scraping, APIs grátis, self-hosted, transcrição, mcp-server,
+#    geração de imagem/vídeo, automação, CRM/formulários, PDF, etc.) e
+#    confirma releases recentes das ferramentas gratuitas já em uso.
+# Grava tudo no Supabase para o Claude analisar e reportar/incorporar
+# diretamente na próxima conversa — sem custo, usa só a API pública do
+# GitHub e do npm.
 
 on:
   schedule:
@@ -18,9 +22,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Verificar releases e novidades, gravar relatório
+      - name: Verificar dependências, releases e novidades, gravar relatório
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_PAT_ALL_REPOS: ${{ secrets.GH_PAT_ALL_REPOS }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
@@ -33,6 +38,53 @@ jobs:
               "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
               "Accept": "application/vnd.github+json",
           }
+          # PAT com acesso a todos os repos (necessário para Dependabot alerts
+          # em repos que não são este; o GITHUB_TOKEN padrão só vê o próprio repo)
+          gh_headers_all = {
+              "Authorization": f"Bearer {os.environ['GH_PAT_ALL_REPOS']}",
+              "Accept": "application/vnd.github+json",
+          }
+
+          # 0. Vulnerabilidades/dependências desatualizadas em TODOS os repos ativos
+          active_repos = [
+              "souzalrns/viannalegal-site",
+              "souzalrns/mesaflow-api",
+              "souzalrns/sst-portugal-site",
+              "souzalrns/agent-network-mcp",
+              "souzalrns/canidelo-vista-mar",
+              "souzalrns/vistamar-gaia",
+          ]
+          dependency_alerts = []
+          for repo in active_repos:
+              try:
+                  r = requests.get(
+                      f"https://api.github.com/repos/{repo}/dependabot/alerts",
+                      headers=gh_headers_all,
+                      params={"state": "open", "per_page": 20},
+                      timeout=15,
+                  )
+                  if r.ok:
+                      alerts = r.json()
+                      if alerts:
+                          dependency_alerts.append({
+                              "repo": repo,
+                              "open_alerts": len(alerts),
+                              "details": [
+                                  {
+                                      "package": a.get("dependency", {}).get("package", {}).get("name"),
+                                      "severity": a.get("security_advisory", {}).get("severity"),
+                                      "summary": a.get("security_advisory", {}).get("summary"),
+                                      "url": a.get("html_url"),
+                                  }
+                                  for a in alerts[:10]
+                              ],
+                          })
+                  elif r.status_code == 404:
+                      pass  # Dependabot não ativado neste repo — sem problema, apenas ignora
+                  else:
+                      print(f"Dependabot check falhou para {repo}: {r.status_code}")
+              except Exception as e:
+                  print(f"Falha ao verificar dependabot em {repo}: {e}")
 
           # 1. Releases recentes das ferramentas que já usamos no pipeline
           tracked_repos = [
@@ -60,7 +112,7 @@ jobs:
               except Exception as e:
                   print(f"Falha ao verificar {repo}: {e}")
 
-          # 2. Repositórios novos/em alta em categorias relevantes (últimos 14 dias)
+          # 2. Repositórios novos/em alta em categorias amplas (últimos 14 dias)
           since = (datetime.now(timezone.utc) - timedelta(days=14)).strftime("%Y-%m-%d")
           topics_queries = [
               f"topic:web-scraping created:>{since} stars:>20",
@@ -74,6 +126,17 @@ jobs:
               f"topic:text-to-video created:>{since} stars:>15",
               f"topic:text-to-image created:>{since} stars:>15",
               f"topic:stable-diffusion created:>{since} stars:>20",
+              f"topic:workflow-automation created:>{since} stars:>30",
+              f"topic:ai-agents created:>{since} stars:>50",
+              f"topic:crm created:>{since} stars:>20",
+              f"topic:invoice-generator created:>{since} stars:>10",
+              f"topic:pdf-generation created:>{since} stars:>15",
+              f"topic:e-signature created:>{since} stars:>10",
+              f"topic:whatsapp-api created:>{since} stars:>15",
+              f"topic:vector-database created:>{since} stars:>30",
+              f"topic:seo-tools created:>{since} stars:>10",
+              f"topic:chatbot created:>{since} stars:>30",
+              f"topic:nestjs created:>{since} stars:>20",
           ]
           trending = []
           for q in topics_queries:
@@ -97,6 +160,7 @@ jobs:
                   print(f"Falha na query '{q}': {e}")
 
           report = {
+              "dependency_alerts": dependency_alerts,
               "recent_releases": recent_releases,
               "trending_repos": trending,
               "generated_at": datetime.now(timezone.utc).isoformat(),
