@@ -3,9 +3,10 @@ name: Auditoria quinzenal de ferramentas gratuitas
 # Corre a cada 14 dias. Verifica se as ferramentas gratuitas que já usamos
 # (yt-dlp, faster-whisper, playwright, pollinations) tiveram releases
 # recentes, e procura repositórios novos/em alta em categorias relevantes
-# (scraping, APIs grátis, self-hosted, transcrição). Grava um relatório no
-# Supabase para o Claude analisar e reportar ao Luiz na próxima conversa —
-# sem custo, usa só a API pública do GitHub.
+# (scraping, APIs grátis, self-hosted, transcrição, mcp-server, geração de
+# imagem/vídeo). Grava um relatório no Supabase para o Claude analisar e
+# reportar/incorporar diretamente na próxima conversa — sem custo, usa só
+# a API pública do GitHub.
 
 on:
   schedule:
@@ -67,6 +68,12 @@ jobs:
               f"topic:self-hosted created:>{since} stars:>50",
               f"topic:transcription created:>{since} stars:>10",
               f"topic:mcp-server created:>{since} stars:>10",
+              f"topic:image-generation created:>{since} stars:>20",
+              f"topic:ai-image-generation created:>{since} stars:>15",
+              f"topic:video-generation created:>{since} stars:>15",
+              f"topic:text-to-video created:>{since} stars:>15",
+              f"topic:text-to-image created:>{since} stars:>15",
+              f"topic:stable-diffusion created:>{since} stars:>20",
           ]
           trending = []
           for q in topics_queries:
