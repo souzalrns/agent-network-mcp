@@ -1,0 +1,128 @@
+name: Auditoria quinzenal de ferramentas gratuitas
+
+# Corre a cada 14 dias. Verifica se as ferramentas gratuitas que já usamos
+# (yt-dlp, faster-whisper, playwright, pollinations) tiveram releases
+# recentes, e procura repositórios novos/em alta em categorias relevantes
+# (scraping, APIs grátis, self-hosted, transcrição). Grava um relatório no
+# Supabase para o Claude analisar e reportar ao Luiz na próxima conversa —
+# sem custo, usa só a API pública do GitHub.
+
+on:
+  schedule:
+    - cron: "0 10 1,15 * *" # dias 1 e 15 de cada mês, às 10h UTC
+  workflow_dispatch: {}
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Verificar releases e novidades, gravar relatório
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          pip install -q requests
+          python3 << 'PYEOF'
+          import json, os, requests
+          from datetime import datetime, timedelta, timezone
+
+          gh_headers = {
+              "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+              "Accept": "application/vnd.github+json",
+          }
+
+          # 1. Releases recentes das ferramentas que já usamos no pipeline
+          tracked_repos = [
+              "yt-dlp/yt-dlp",
+              "SYSTRAN/faster-whisper",
+              "microsoft/playwright-python",
+              "pollinations/pollinations",
+          ]
+          recent_releases = []
+          for repo in tracked_repos:
+              try:
+                  r = requests.get(
+                      f"https://api.github.com/repos/{repo}/releases/latest",
+                      headers=gh_headers, timeout=15,
+                  )
+                  if r.ok:
+                      d = r.json()
+                      recent_releases.append({
+                          "repo": repo,
+                          "tag": d.get("tag_name"),
+                          "published_at": d.get("published_at"),
+                          "name": d.get("name"),
+                          "url": d.get("html_url"),
+                      })
+              except Exception as e:
+                  print(f"Falha ao verificar {repo}: {e}")
+
+          # 2. Repositórios novos/em alta em categorias relevantes (últimos 14 dias)
+          since = (datetime.now(timezone.utc) - timedelta(days=14)).strftime("%Y-%m-%d")
+          topics_queries = [
+              f"topic:web-scraping created:>{since} stars:>20",
+              f"topic:free-api created:>{since} stars:>10",
+              f"topic:self-hosted created:>{since} stars:>50",
+              f"topic:transcription created:>{since} stars:>10",
+              f"topic:mcp-server created:>{since} stars:>10",
+          ]
+          trending = []
+          for q in topics_queries:
+              try:
+                  r = requests.get(
+                      "https://api.github.com/search/repositories",
+                      headers=gh_headers,
+                      params={"q": q, "sort": "stars", "order": "desc", "per_page": 5},
+                      timeout=15,
+                  )
+                  if r.ok:
+                      for item in r.json().get("items", []):
+                          trending.append({
+                              "name": item["full_name"],
+                              "description": item.get("description"),
+                              "stars": item["stargazers_count"],
+                              "url": item["html_url"],
+                              "query": q,
+                          })
+              except Exception as e:
+                  print(f"Falha na query '{q}': {e}")
+
+          report = {
+              "recent_releases": recent_releases,
+              "trending_repos": trending,
+              "generated_at": datetime.now(timezone.utc).isoformat(),
+          }
+
+          supabase_url = os.environ["SUPABASE_URL"].rstrip("/")
+          key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+
+          resp = requests.post(
+              f"{supabase_url}/rest/v1/tool_scan_reports",
+              headers={
+                  "apikey": key,
+                  "Authorization": f"Bearer {key}",
+                  "Content-Type": "application/json",
+                  "Prefer": "return=representation",
+              },
+              data=json.dumps({"report": report, "reviewed": False}),
+              timeout=30,
+          )
+          resp.raise_for_status()
+          print("Relatório gravado no Supabase:")
+          print(json.dumps(report, ensure_ascii=False, indent=2)[:3000])
+
+          # Reaproveita a limpeza automática de espaço
+          cleanup_resp = requests.post(
+              f"{supabase_url}/rest/v1/rpc/cleanup_old_transcripts_if_needed",
+              headers={
+                  "apikey": key,
+                  "Authorization": f"Bearer {key}",
+                  "Content-Type": "application/json",
+              },
+              data="{}",
+              timeout=30,
+          )
+          cleanup_resp.raise_for_status()
+          PYEOF
