@@ -53,8 +53,10 @@ jobs:
 
           def is_thin(html_content: str) -> bool:
               soup = BeautifulSoup(html_content or "", "html5lib")
+              for tag in soup(["script", "style", "noscript"]):
+                  tag.decompose()
               text = soup.get_text(strip=True)
-              return len(text) < 200  # provável SPA/JS-heavy
+              return len(text) < 300  # provável SPA/JS-heavy (React/Vue com root vazio no HTML inicial)
 
           if not html or is_thin(html):
               print("Conteúdo fino ou requests falhou — usando Playwright (headless Chrome)")
