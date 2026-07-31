@@ -3,7 +3,8 @@ name: Transcrever vídeo/reel
 # Dispara manualmente (ou via API) passando uma URL de vídeo — YouTube,
 # Instagram, TikTok, Twitter/X, Facebook e +1800 sites suportados pelo
 # yt-dlp. Baixa só o áudio, transcreve com faster-whisper (modelo "base",
-# roda em CPU) e grava o resultado em transcripts/latest.json no repo.
+# roda em CPU) e grava o resultado na tabela public.transcripts do Supabase
+# (projeto agent-network-memory) — histórico acumulado, custo zero.
 
 on:
   workflow_dispatch:
@@ -13,30 +14,27 @@ on:
         required: true
         type: string
 
-permissions:
-  contents: write
-
 jobs:
   transcribe:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Instalar dependências
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y ffmpeg
-          pip install -q --upgrade yt-dlp faster-whisper
+          pip install -q --upgrade yt-dlp faster-whisper requests
 
-      - name: Baixar, transcrever e gravar resultado
+      - name: Baixar, transcrever e gravar no Supabase
         env:
           VIDEO_URL: ${{ inputs.url }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           python3 << 'PYEOF'
-          import json, os, subprocess
+          import json, os, subprocess, requests
           from faster_whisper import WhisperModel
+          from urllib.parse import urlparse
 
           url = os.environ["VIDEO_URL"]
 
@@ -54,6 +52,18 @@ jobs:
           uploader = yt_field("uploader")
           description = yt_field("description")
 
+          host = urlparse(url).netloc.lower()
+          if "instagram" in host:
+              platform = "instagram"
+          elif "youtu" in host:
+              platform = "youtube"
+          elif "tiktok" in host:
+              platform = "tiktok"
+          elif "twitter" in host or host == "x.com":
+              platform = "twitter"
+          else:
+              platform = host or "desconhecido"
+
           subprocess.run(
               ["yt-dlp", "-x", "--audio-format", "mp3", "--audio-quality", "5",
                "-o", "audio.%(ext)s", url],
@@ -64,8 +74,9 @@ jobs:
           segments, info = model.transcribe("audio.mp3", language=None, vad_filter=True)
           transcript = " ".join(seg.text.strip() for seg in segments)
 
-          result = {
+          row = {
               "url": url,
+              "platform": platform,
               "title": title,
               "uploader": uploader,
               "description": description,
@@ -74,17 +85,21 @@ jobs:
               "transcript": transcript,
           }
 
-          os.makedirs("transcripts", exist_ok=True)
-          with open("transcripts/latest.json", "w", encoding="utf-8") as f:
-              json.dump(result, f, ensure_ascii=False, indent=2)
+          supabase_url = os.environ["SUPABASE_URL"].rstrip("/")
+          key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
 
-          print(json.dumps(result, ensure_ascii=False, indent=2))
+          resp = requests.post(
+              f"{supabase_url}/rest/v1/transcripts",
+              headers={
+                  "apikey": key,
+                  "Authorization": f"Bearer {key}",
+                  "Content-Type": "application/json",
+                  "Prefer": "return=representation",
+              },
+              data=json.dumps(row),
+              timeout=30,
+          )
+          resp.raise_for_status()
+          print("Gravado no Supabase com sucesso:")
+          print(json.dumps(resp.json(), ensure_ascii=False, indent=2))
           PYEOF
-
-      - name: Commit resultado
-        run: |
-          git config user.name "transcribe-bot"
-          git config user.email "actions@github.com"
-          git add transcripts/latest.json
-          git commit -m "chore: resultado de transcrição — ${{ inputs.url }}" || echo "Nada para commitar"
-          git push
