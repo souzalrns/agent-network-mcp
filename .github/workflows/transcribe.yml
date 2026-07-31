@@ -102,4 +102,19 @@ jobs:
           resp.raise_for_status()
           print("Gravado no Supabase com sucesso:")
           print(json.dumps(resp.json(), ensure_ascii=False, indent=2))
+
+          # Verifica consumo de espaço e apaga os mais antigos se ultrapassar 70% do limite free tier
+          cleanup_resp = requests.post(
+              f"{supabase_url}/rest/v1/rpc/cleanup_old_transcripts_if_needed",
+              headers={
+                  "apikey": key,
+                  "Authorization": f"Bearer {key}",
+                  "Content-Type": "application/json",
+              },
+              data="{}",
+              timeout=30,
+          )
+          cleanup_resp.raise_for_status()
+          print("Verificação de limpeza automática:")
+          print(json.dumps(cleanup_resp.json(), ensure_ascii=False, indent=2))
           PYEOF
