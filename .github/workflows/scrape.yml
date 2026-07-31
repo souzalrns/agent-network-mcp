@@ -1,0 +1,121 @@
+name: Extrair dados de site (scraping)
+
+# Dispara manualmente (ou via API) passando uma URL. Tenta primeiro com
+# requests+BeautifulSoup (rápido, cobre a maioria dos sites estáticos);
+# se a página parecer vazia (JS-heavy / SPA), usa Playwright (headless
+# Chrome) como fallback. Zero custo, zero limite de créditos — corre
+# inteiramente no runner gratuito do GitHub Actions.
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "URL do site a extrair"
+        required: true
+        type: string
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Instalar dependências
+        run: |
+          pip install -q requests beautifulsoup4 markdownify html5lib playwright
+          python3 -m playwright install --with-deps chromium
+
+      - name: Extrair e gravar no Supabase
+        env:
+          TARGET_URL: ${{ inputs.url }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python3 << 'PYEOF'
+          import json, os, requests
+          from bs4 import BeautifulSoup
+          from markdownify import markdownify
+
+          url = os.environ["TARGET_URL"]
+          method = "requests"
+          status_code = None
+          html = ""
+
+          try:
+              resp = requests.get(
+                  url,
+                  headers={"User-Agent": "Mozilla/5.0 (compatible; LRNSdigital-scraper/1.0)"},
+                  timeout=20,
+              )
+              status_code = resp.status_code
+              html = resp.text
+          except Exception as e:
+              print(f"requests falhou: {e}")
+
+          def is_thin(html_content: str) -> bool:
+              soup = BeautifulSoup(html_content or "", "html5lib")
+              text = soup.get_text(strip=True)
+              return len(text) < 200  # provável SPA/JS-heavy
+
+          if not html or is_thin(html):
+              print("Conteúdo fino ou requests falhou — usando Playwright (headless Chrome)")
+              method = "playwright"
+              from playwright.sync_api import sync_playwright
+              with sync_playwright() as p:
+                  browser = p.chromium.launch()
+                  page = browser.new_page(user_agent="Mozilla/5.0 (compatible; LRNSdigital-scraper/1.0)")
+                  page.goto(url, timeout=30000, wait_until="networkidle")
+                  html = page.content()
+                  status_code = 200
+                  browser.close()
+
+          soup = BeautifulSoup(html, "html5lib")
+          title_tag = soup.find("title")
+          title = title_tag.get_text(strip=True) if title_tag else ""
+
+          for tag in soup(["script", "style", "noscript"]):
+              tag.decompose()
+
+          content_text = soup.get_text(separator="\n", strip=True)
+          content_markdown = markdownify(str(soup), heading_style="ATX")
+
+          row = {
+              "url": url,
+              "title": title,
+              "content_markdown": content_markdown[:200000],  # limite de segurança
+              "content_text": content_text[:200000],
+              "status_code": status_code,
+              "method": method,
+          }
+
+          supabase_url = os.environ["SUPABASE_URL"].rstrip("/")
+          key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+
+          resp = requests.post(
+              f"{supabase_url}/rest/v1/scrapes",
+              headers={
+                  "apikey": key,
+                  "Authorization": f"Bearer {key}",
+                  "Content-Type": "application/json",
+                  "Prefer": "return=representation",
+              },
+              data=json.dumps(row),
+              timeout=30,
+          )
+          resp.raise_for_status()
+          print(f"Gravado no Supabase (método: {method}, status: {status_code}):")
+          print(json.dumps({"id": resp.json()[0].get("id"), "title": title}, ensure_ascii=False, indent=2))
+
+          # Reaproveita a mesma função de limpeza (aplica-se à base de dados toda, não só a uma tabela)
+          cleanup_resp = requests.post(
+              f"{supabase_url}/rest/v1/rpc/cleanup_old_transcripts_if_needed",
+              headers={
+                  "apikey": key,
+                  "Authorization": f"Bearer {key}",
+                  "Content-Type": "application/json",
+              },
+              data="{}",
+              timeout=30,
+          )
+          cleanup_resp.raise_for_status()
+          print("Verificação de limpeza automática:", cleanup_resp.json())
+          PYEOF
