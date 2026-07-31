@@ -1,0 +1,49 @@
+name: Transcrever vídeo/reel
+
+# Dispara manualmente (ou via API) passando uma URL de vídeo — YouTube,
+# Instagram, TikTok, Twitter/X, Facebook e +1800 sites suportados pelo
+# yt-dlp. Baixa só o áudio, transcreve com faster-whisper (modelo "base",
+# roda em CPU) e imprime o resultado no log do job.
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "URL do vídeo/reel/post a transcrever"
+        required: true
+        type: string
+
+jobs:
+  transcribe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Instalar dependências
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+          pip install -q --upgrade yt-dlp faster-whisper
+
+      - name: Baixar metadados (título, legenda, autor)
+        run: |
+          yt-dlp --skip-download --print "%(title)s|||%(uploader)s|||%(description)s" "${{ inputs.url }}" > meta.txt || echo "SEM_METADADOS" > meta.txt
+          echo "===METADADOS_INICIO==="
+          cat meta.txt
+          echo "===METADADOS_FIM==="
+
+      - name: Baixar áudio
+        run: |
+          yt-dlp -x --audio-format mp3 --audio-quality 5 -o "audio.%(ext)s" "${{ inputs.url }}"
+
+      - name: Transcrever com faster-whisper
+        run: |
+          python3 -c "
+          from faster_whisper import WhisperModel
+          model = WhisperModel('base', device='cpu', compute_type='int8')
+          segments, info = model.transcribe('audio.mp3', language=None, vad_filter=True)
+          print('===IDIOMA_DETETADO===', info.language, f'(confiança {info.language_probability:.2f})')
+          print('===TRANSCRICAO_INICIO===')
+          for seg in segments:
+              print(seg.text.strip())
+          print('===TRANSCRICAO_FIM===')
+          "
