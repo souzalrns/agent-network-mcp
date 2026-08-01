@@ -114,9 +114,13 @@ async function runTask(task) {
     });
     console.log(`  ✅ Concluída.`);
   } catch (err) {
+    const diagnostics =
+      `code=${err.code} signal=${err.signal}\n` +
+      `--- stdout ---\n${String(err.stdout || "(vazio)").slice(0, 2000)}\n` +
+      `--- stderr ---\n${String(err.stderr || "(vazio)").slice(0, 2000)}`;
     await updateTask(task.id, {
       status: "error",
-      error_message: String(err.stderr || err.message).slice(0, 4000),
+      error_message: diagnostics.slice(0, 4000),
       completed_at: new Date().toISOString(),
     });
     console.log(`  ❌ Erro: ${err.message}`);
