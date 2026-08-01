@@ -24,6 +24,10 @@ const execFileAsync = promisify(execFile);
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const POLL_INTERVAL_MS = 5000;
+// Permite apontar directamente para o executável se o PATH não estiver
+// configurado (comum logo após instalar o Claude Code no Windows,
+// que instala em ~/.local/bin sem adicionar ao PATH automaticamente).
+const CLAUDE_BIN = process.env.CLAUDE_BIN || "claude";
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.error("❌ Define SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY antes de correr.");
@@ -73,7 +77,7 @@ async function runTask(task) {
 
   try {
     const { stdout } = await execFileAsync(
-      "claude",
+      CLAUDE_BIN,
       [
         "-p", task.prompt,
         "--permission-mode", "acceptEdits",
