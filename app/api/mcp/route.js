@@ -6,6 +6,7 @@ import {
   setProjectState,
   logAction,
   getClient,
+  getToolEvaluations,
 } from "../../../lib/memory.js";
 import { retrieveContext } from "../../../lib/knowledge.js";
 
@@ -116,9 +117,32 @@ async function runAgent(agentId, userRequest) {
   const supabase = getClient();
   const knowledge = await retrieveContext(supabase, agentId, userRequest);
 
-  const knowledgeBlock = knowledge
+  let knowledgeBlock = knowledge
     ? `\n\nConhecimento relevante recuperado da base de dados (usa isto como fonte primária quando aplicável, e cita a fonte):\n${knowledge}`
     : "";
+
+  // radar-ferramentas é especial: em vez de RAG por embeddings (que
+  // ficaria desatualizado sempre que uma ferramenta muda de status), lê
+  // a tabela tool_evaluations directamente e sempre por inteiro — é
+  // pequena, e o agente precisa de ver o quadro completo (pendentes,
+  // integradas, rejeitadas) para responder bem.
+  if (agentId === "radar-ferramentas") {
+    const evaluations = await getToolEvaluations();
+    knowledgeBlock = evaluations.length
+      ? "\n\nBanco de ferramentas/soluções já avaliadas (tabela tool_evaluations, " +
+        `${evaluations.length} entradas, mais recentes primeiro):\n` +
+        evaluations
+          .map(
+            (e) =>
+              `- ${e.nome} [${e.status}] (fonte: ${e.fonte || "?"})\n` +
+              `  Resumo: ${e.resumo || "-"}\n` +
+              (e.bloqueio ? `  Bloqueio: ${e.bloqueio}\n` : "") +
+              (e.proximo_passo ? `  Próximo passo: ${e.proximo_passo}\n` : "") +
+              (e.descoberto_via ? `  Descoberto via: ${e.descoberto_via}` : "")
+          )
+          .join("\n\n")
+      : "\n\n(Banco de ferramentas ainda vazio.)";
+  }
 
   // O systemPrompt do agente vai sozinho e sem alterações — é o prefixo
   // estático que o Gemini pode cachear (grátis, implicit caching, até 90%
