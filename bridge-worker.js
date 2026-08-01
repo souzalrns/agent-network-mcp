@@ -80,7 +80,15 @@ async function runTask(task) {
         "--allowedTools", allowedTools,
         "--output-format", "json",
       ],
-      { cwd: task.project_path, timeout: 15 * 60 * 1000, maxBuffer: 20 * 1024 * 1024 }
+      {
+        cwd: task.project_path,
+        timeout: 15 * 60 * 1000,
+        maxBuffer: 20 * 1024 * 1024,
+        // No Windows, `claude` é instalado como .cmd/.ps1 — execFile sem
+        // shell:true dá ENOENT mesmo que o comando funcione normalmente
+        // no terminal. shell:true resolve isso em qualquer SO.
+        shell: true,
+      }
     );
 
     let parsed;
