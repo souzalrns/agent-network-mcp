@@ -1,11 +1,13 @@
 name: Extrair imagens de post (carrossel/foto)
 
 # Dispara manualmente (ou via API) passando uma URL de post de imagem/carrossel
-# (Instagram, etc.) que o transcribe.yml não consegue processar por não ter
-# áudio. Descarrega as imagens com yt-dlp, sobe cada uma para o bucket público
-# post-images do Supabase Storage, e grava os URLs públicos + legenda na
-# tabela public.image_posts. Zero custo — corre no runner gratuito do
-# GitHub Actions.
+# do Instagram. O yt-dlp trata estes posts como se fossem vídeo e falha com
+# "No video formats found!" (limitação conhecida do extrator) — por isso
+# aqui usamos gallery-dl, que é especializado em imagens/carrosséis/álbuns.
+# Precisa de cookies de sessão do Instagram (secret INSTAGRAM_COOKIES) porque
+# a maioria dos carrosséis exige sessão autenticada.
+#
+# Deteção por shortcode evita reprocessar o mesmo post (força com "force").
 
 on:
   workflow_dispatch:
@@ -14,148 +16,168 @@ on:
         description: "URL do post de imagem/carrossel a extrair"
         required: true
         type: string
+      force:
+        description: "Reprocessar mesmo se já existir"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   extrair-imagem:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Instalar dependências
-        run: |
-          pip install -q --upgrade yt-dlp requests
+        run: pip install -q -U gallery-dl requests
 
-      - name: Descarregar imagens
+      - name: Preparar cookies do Instagram
         env:
-          POST_URL: ${{ inputs.url }}
+          INSTAGRAM_COOKIES: ${{ secrets.INSTAGRAM_COOKIES }}
+        run: |
+          if [ -z "$INSTAGRAM_COOKIES" ]; then
+            echo "❌ Secret INSTAGRAM_COOKIES não configurado — ver instruções no README."
+            exit 1
+          fi
+          if echo "$INSTAGRAM_COOKIES" | grep -q "Netscape\|sessionid"; then
+            echo "$INSTAGRAM_COOKIES" > cookies.txt
+          else
+            echo "$INSTAGRAM_COOKIES" | base64 -d > cookies.txt
+          fi
+          echo "cookies.txt criado ($(wc -l < cookies.txt) linhas)"
+
+      - name: Limpar URL e extrair shortcode
+        id: post
+        run: |
+          RAW_URL="${{ inputs.url }}"
+          CLEAN_URL=$(echo "$RAW_URL" | sed -E 's/\?.*//' | sed -E 's|/$||')
+          SHORTCODE=$(echo "$CLEAN_URL" | grep -oP '/(p|reel)/\K[^/]+' || true)
+          if [ -z "$SHORTCODE" ]; then
+            echo "❌ Não foi possível extrair shortcode de: $CLEAN_URL"
+            exit 1
+          fi
+          echo "url=$CLEAN_URL" >> "$GITHUB_OUTPUT"
+          echo "shortcode=$SHORTCODE" >> "$GITHUB_OUTPUT"
+          echo "URL limpa: $CLEAN_URL | shortcode: $SHORTCODE"
+
+      - name: Verificar se já foi processado
+        id: existing
+        env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          mkdir -p imgs
+          if [ "${{ inputs.force }}" = "true" ]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          RESP=$(curl -s -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            "$SUPABASE_URL/rest/v1/image_posts?shortcode=eq.${{ steps.post.outputs.shortcode }}&select=id")
+          if [ "$RESP" != "[]" ]; then
+            echo "⚠️ Já existe (shortcode=${{ steps.post.outputs.shortcode }}) — a saltar. Usa force=true para reprocessar."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Descarregar imagens com gallery-dl
+        if: steps.existing.outputs.skip != 'true'
+        id: download
+        run: |
+          mkdir -p downloads
+          cat > gallery-dl.conf << 'CONF'
+          {
+            "extractor": {
+              "instagram": {
+                "cookies": "cookies.txt",
+                "videos": false,
+                "sleep-request": 2.0
+              }
+            },
+            "downloader": { "retries": 3, "timeout": 30 }
+          }
+          CONF
+
           set +e
-          yt-dlp \
-            -o "imgs/%(id)s_%(autonumber)s.%(ext)s" \
-            "$POST_URL" > /tmp/dl.out 2> /tmp/dl.err
-          export DL_EXIT=$?
+          gallery-dl -c gallery-dl.conf -d downloads --verbose "${{ steps.post.outputs.url }}" 2>&1 | tee download.log
           set -e
 
-          echo "Exit code: $DL_EXIT"
-          echo "Imagens descarregadas:"
-          ls -la imgs/ || echo "(nenhuma)"
-
-          python3 << 'PYEOF'
-          import json, os, requests
-          supabase_url = os.environ["SUPABASE_URL"].rstrip("/")
-          key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
-          def read(p, n=4000):
-              try:
-                  return open(p).read()[:n]
-              except Exception as e:
-                  return f"(erro a ler {p}: {e})"
-          row = {
-              "dump_exit": os.environ.get("DL_EXIT", ""),
-              "dump_stdout": "",
-              "dump_stderr": "",
-              "thumb_stdout": read("/tmp/dl.out"),
-              "thumb_stderr": read("/tmp/dl.err"),
-          }
-          requests.post(
-              f"{supabase_url}/rest/v1/debug_logs",
-              headers={"apikey": key, "Authorization": f"Bearer {key}",
-                       "Content-Type": "application/json", "Prefer": "return=minimal"},
-              data=json.dumps(row), timeout=30,
-          )
-          print("Debug gravado no Supabase.")
-          PYEOF
+          IMAGE_COUNT=$(find downloads -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.webp" \) | wc -l)
+          echo "image_count=$IMAGE_COUNT" >> "$GITHUB_OUTPUT"
+          echo "$IMAGE_COUNT imagem(ns) encontradas"
 
       - name: Subir para Supabase Storage e gravar metadados
+        if: steps.existing.outputs.skip != 'true'
         env:
-          POST_URL: ${{ inputs.url }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          POST_URL: ${{ steps.post.outputs.url }}
+          SHORTCODE: ${{ steps.post.outputs.shortcode }}
         run: |
           python3 << 'PYEOF'
-          import json, mimetypes, os, subprocess, requests
+          import json, mimetypes, os, requests
           from pathlib import Path
-          from urllib.parse import urlparse, quote
+          from urllib.parse import quote
 
-          url = os.environ["POST_URL"]
           supabase_url = os.environ["SUPABASE_URL"].rstrip("/")
           key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+          shortcode = os.environ["SHORTCODE"]
+          post_url = os.environ["POST_URL"]
 
-          def yt_field(field):
-              try:
-                  out = subprocess.run(
-                      ["yt-dlp", "--skip-download", "--print", f"%({field})s", url],
-                      capture_output=True, text=True, timeout=60
-                  )
-                  return out.stdout.strip()
-              except Exception:
-                  return ""
-
-          title = yt_field("title")
-          uploader = yt_field("uploader")
-          description = yt_field("description")
-
-          host = urlparse(url).netloc.lower()
-          if "instagram" in host:
-              platform = "instagram"
-          elif "tiktok" in host:
-              platform = "tiktok"
-          elif "twitter" in host or host == "x.com":
-              platform = "twitter"
-          else:
-              platform = host or "desconhecido"
-
-          img_dir = Path("imgs")
-          files = sorted(img_dir.glob("*")) if img_dir.exists() else []
-
-          if not files:
-              print("ATENÇÃO: nenhuma imagem foi descarregada. O post pode exigir login, "
-                    "ter sido apagado, ou o extrator do yt-dlp não suporta este formato.")
-
-          public_urls = []
-          for f in files:
-              mime = mimetypes.guess_type(f.name)[0] or "image/jpeg"
-              storage_path = f"{platform}/{f.name}"
-              with open(f, "rb") as fh:
-                  data = fh.read()
-              up_resp = requests.post(
-                  f"{supabase_url}/storage/v1/object/post-images/{quote(storage_path)}",
-                  headers={
-                      "apikey": key,
-                      "Authorization": f"Bearer {key}",
-                      "Content-Type": mime,
-                      "x-upsert": "true",
-                  },
-                  data=data,
-                  timeout=60,
-              )
-              if up_resp.status_code in (200, 201):
-                  public_urls.append(f"{supabase_url}/storage/v1/object/public/post-images/{storage_path}")
-              else:
-                  print(f"Falha ao subir {f.name}: {up_resp.status_code} {up_resp.text[:200]}")
-
-          row = {
-              "url": url,
-              "platform": platform,
-              "uploader": uploader,
-              "caption": description or title,
-              "image_urls": public_urls,
-              "image_count": len(public_urls),
+          headers_json = {
+              "apikey": key, "Authorization": f"Bearer {key}",
+              "Content-Type": "application/json", "Prefer": "return=representation",
           }
 
-          resp = requests.post(
-              f"{supabase_url}/rest/v1/image_posts",
-              headers={
-                  "apikey": key,
-                  "Authorization": f"Bearer {key}",
-                  "Content-Type": "application/json",
-                  "Prefer": "return=representation",
-              },
-              data=json.dumps(row),
-              timeout=30,
-          )
+          downloads = Path("downloads")
+          files = sorted(
+              p for p in downloads.rglob("*")
+              if p.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp")
+          ) if downloads.exists() else []
+
+          if not files:
+              log_tail = ""
+              try:
+                  log_tail = Path("download.log").read_text()[-3000:]
+              except Exception:
+                  pass
+              row = {
+                  "url": post_url, "platform": "instagram", "shortcode": shortcode,
+                  "status": "error", "error_message": log_tail or "Nenhuma imagem encontrada",
+                  "image_count": 0, "image_urls": [], "images": [],
+              }
+              requests.post(f"{supabase_url}/rest/v1/image_posts", headers=headers_json,
+                             data=json.dumps(row), timeout=30)
+              raise SystemExit("Nenhuma imagem descarregada — erro gravado no Supabase.")
+
+          uploaded = []
+          public_urls = []
+          for idx, f in enumerate(files, start=1):
+              ext = f.suffix.lstrip(".").lower()
+              mime = mimetypes.guess_type(f.name)[0] or "image/jpeg"
+              storage_path = f"instagram/{shortcode}/{idx:02d}.{ext}"
+              with open(f, "rb") as fh:
+                  data = fh.read()
+              up = requests.post(
+                  f"{supabase_url}/storage/v1/object/post-images/{quote(storage_path)}",
+                  headers={"apikey": key, "Authorization": f"Bearer {key}",
+                           "Content-Type": mime, "x-upsert": "true"},
+                  data=data, timeout=60,
+              )
+              if up.status_code in (200, 201):
+                  public_url = f"{supabase_url}/storage/v1/object/public/post-images/{storage_path}"
+                  public_urls.append(public_url)
+                  uploaded.append({"index": idx, "path": storage_path,
+                                    "public_url": public_url, "size_bytes": len(data)})
+              else:
+                  print(f"Falha ao subir {f.name}: {up.status_code} {up.text[:200]}")
+
+          row = {
+              "url": post_url, "platform": "instagram", "shortcode": shortcode,
+              "status": "ready", "error_message": None,
+              "image_count": len(uploaded), "image_urls": public_urls, "images": uploaded,
+          }
+          resp = requests.post(f"{supabase_url}/rest/v1/image_posts", headers=headers_json,
+                                data=json.dumps(row), timeout=30)
           resp.raise_for_status()
-          print(f"Gravado no Supabase ({len(public_urls)} imagens):")
-          print(json.dumps(resp.json(), ensure_ascii=False, indent=2))
+          print(f"Gravado no Supabase ({len(uploaded)} imagens, shortcode={shortcode})")
           PYEOF
