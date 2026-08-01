@@ -24,22 +24,48 @@ jobs:
         run: |
           pip install -q --upgrade yt-dlp requests
 
-      - name: Descarregar imagens
+      - name: Descarregar imagens (com captura de erro para debug)
         env:
           POST_URL: ${{ inputs.url }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           mkdir -p imgs
-          echo "=== DEBUG: yt-dlp --dump-json ==="
-          yt-dlp --dump-json "$POST_URL" 2>&1 | head -c 3000
-          echo ""
-          echo "=== DEBUG: fim do dump-json ==="
-
+          set +e
+          yt-dlp --dump-json "$POST_URL" > /tmp/dump.json 2> /tmp/dump.err
+          DUMP_EXIT=$?
           yt-dlp \
             --skip-download \
             --write-thumbnail \
             --convert-thumbnails jpg \
             -o "imgs/%(id)s_%(autonumber)s.%(ext)s" \
-            "$POST_URL" || true
+            "$POST_URL" > /tmp/thumb.out 2> /tmp/thumb.err
+          set -e
+
+          python3 << 'PYEOF'
+          import json, os, requests
+          supabase_url = os.environ["SUPABASE_URL"].rstrip("/")
+          key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+          def read(p, n=4000):
+              try:
+                  return open(p).read()[:n]
+              except Exception as e:
+                  return f"(erro a ler {p}: {e})"
+          row = {
+              "dump_exit": os.environ.get("DUMP_EXIT", ""),
+              "dump_stdout": read("/tmp/dump.json"),
+              "dump_stderr": read("/tmp/dump.err"),
+              "thumb_stdout": read("/tmp/thumb.out"),
+              "thumb_stderr": read("/tmp/thumb.err"),
+          }
+          requests.post(
+              f"{supabase_url}/rest/v1/debug_logs",
+              headers={"apikey": key, "Authorization": f"Bearer {key}",
+                       "Content-Type": "application/json", "Prefer": "return=minimal"},
+              data=json.dumps(row), timeout=30,
+          )
+          print("Debug gravado no Supabase.")
+          PYEOF
 
           # Fallback: alguns posts de imagem só vêm como "thumbnail" único
           # via --list-thumbnails; se a pasta ficou vazia, tenta o modo de
