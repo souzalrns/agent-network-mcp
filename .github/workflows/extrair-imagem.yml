@@ -27,30 +27,45 @@ jobs:
       - name: Descarregar imagens
         env:
           POST_URL: ${{ inputs.url }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           mkdir -p imgs
-          # Para posts de imagem/carrossel, download normal (sem -x, sem
-          # --skip-download) é o que funciona — o yt-dlp trata cada slide
-          # como um "formato" genérico de imagem. --skip-download +
-          # --write-thumbnail falha aqui porque tenta resolver "video
-          # formats" que não existem em entradas de imagem pura.
+          set +e
           yt-dlp \
             -o "imgs/%(id)s_%(autonumber)s.%(ext)s" \
-            "$POST_URL"
+            "$POST_URL" > /tmp/dl.out 2> /tmp/dl.err
+          export DL_EXIT=$?
+          set -e
 
+          echo "Exit code: $DL_EXIT"
           echo "Imagens descarregadas:"
           ls -la imgs/ || echo "(nenhuma)"
 
-          # Fallback: alguns posts de imagem só vêm como "thumbnail" único
-          # via --list-thumbnails; se a pasta ficou vazia, tenta o modo de
-          # download direto (alguns extratores tratam fotos como "vídeo"
-          # de um frame só).
-          if [ -z "$(ls -A imgs 2>/dev/null)" ]; then
-            yt-dlp -o "imgs/%(id)s_%(autonumber)s.%(ext)s" "$POST_URL" || true
-          fi
-
-          echo "Imagens descarregadas:"
-          ls -la imgs/ || echo "(nenhuma)"
+          python3 << 'PYEOF'
+          import json, os, requests
+          supabase_url = os.environ["SUPABASE_URL"].rstrip("/")
+          key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+          def read(p, n=4000):
+              try:
+                  return open(p).read()[:n]
+              except Exception as e:
+                  return f"(erro a ler {p}: {e})"
+          row = {
+              "dump_exit": os.environ.get("DL_EXIT", ""),
+              "dump_stdout": "",
+              "dump_stderr": "",
+              "thumb_stdout": read("/tmp/dl.out"),
+              "thumb_stderr": read("/tmp/dl.err"),
+          }
+          requests.post(
+              f"{supabase_url}/rest/v1/debug_logs",
+              headers={"apikey": key, "Authorization": f"Bearer {key}",
+                       "Content-Type": "application/json", "Prefer": "return=minimal"},
+              data=json.dumps(row), timeout=30,
+          )
+          print("Debug gravado no Supabase.")
+          PYEOF
 
       - name: Subir para Supabase Storage e gravar metadados
         env:
