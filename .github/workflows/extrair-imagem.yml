@@ -30,20 +30,24 @@ jobs:
       - name: Instalar dependências
         run: pip install -q -U gallery-dl requests
 
-      - name: Preparar cookies do Instagram
+      - name: Preparar cookies do Instagram (opcional)
         env:
           INSTAGRAM_COOKIES: ${{ secrets.INSTAGRAM_COOKIES }}
         run: |
           if [ -z "$INSTAGRAM_COOKIES" ]; then
-            echo "❌ Secret INSTAGRAM_COOKIES não configurado — ver instruções no README."
-            exit 1
-          fi
-          if echo "$INSTAGRAM_COOKIES" | grep -q "Netscape\|sessionid"; then
-            echo "$INSTAGRAM_COOKIES" > cookies.txt
+            echo "Sem INSTAGRAM_COOKIES configurado — a tentar sem sessão."
+            echo "Funciona para posts públicos; carrosséis com restrição vão falhar"
+            echo "de forma limpa (erro gravado no Supabase, sem quebrar o workflow)."
+            echo "has_cookies=false" >> "$GITHUB_ENV"
           else
-            echo "$INSTAGRAM_COOKIES" | base64 -d > cookies.txt
+            if echo "$INSTAGRAM_COOKIES" | grep -q "Netscape\|sessionid"; then
+              echo "$INSTAGRAM_COOKIES" > cookies.txt
+            else
+              echo "$INSTAGRAM_COOKIES" | base64 -d > cookies.txt
+            fi
+            echo "cookies.txt criado ($(wc -l < cookies.txt) linhas)"
+            echo "has_cookies=true" >> "$GITHUB_ENV"
           fi
-          echo "cookies.txt criado ($(wc -l < cookies.txt) linhas)"
 
       - name: Limpar URL e extrair shortcode
         id: post
@@ -84,7 +88,8 @@ jobs:
         id: download
         run: |
           mkdir -p downloads
-          cat > gallery-dl.conf << 'CONF'
+          if [ "$has_cookies" = "true" ]; then
+            cat > gallery-dl.conf << 'CONF'
           {
             "extractor": {
               "instagram": {
@@ -96,6 +101,19 @@ jobs:
             "downloader": { "retries": 3, "timeout": 30 }
           }
           CONF
+          else
+            cat > gallery-dl.conf << 'CONF'
+          {
+            "extractor": {
+              "instagram": {
+                "videos": false,
+                "sleep-request": 2.0
+              }
+            },
+            "downloader": { "retries": 3, "timeout": 30 }
+          }
+          CONF
+          fi
 
           set +e
           gallery-dl -c gallery-dl.conf -d downloads --verbose "${{ steps.post.outputs.url }}" 2>&1 | tee download.log
