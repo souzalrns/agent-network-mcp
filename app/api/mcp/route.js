@@ -283,6 +283,126 @@ const handler = createMcpHandler(
         };
       }
     );
+    server.tool(
+      "dispatch_code_task",
+      "Envia uma tarefa para ser executada pelo Claude Code na máquina " +
+        "local do Luiz (não aqui no chat). A tarefa fica numa fila " +
+        "(tabela code_tasks) e um processo a correr na máquina dele " +
+        "(bridge-worker.js) apanha-a, corre `claude -p` no diretório do " +
+        "projeto indicado, e grava o resultado de volta. Usa " +
+        "check_code_task depois para ver o resultado — pode demorar " +
+        "minutos, dependendo da tarefa. Nunca uses isto para tarefas " +
+        "vagas ou arriscadas; o prompt deve ser específico e autocontido " +
+        "(o Claude Code não vai pedir esclarecimentos, corre sem UI).",
+      {
+        prompt: z
+          .string()
+          .describe(
+            "Instrução completa e específica para o Claude Code executar. " +
+              "Deve ser autocontida — não há follow-up interativo."
+          ),
+        project_path: z
+          .string()
+          .describe(
+            "Caminho absoluto do projeto na máquina do Luiz onde a tarefa " +
+              "deve correr (ex: /Users/luiz/projects/mesaflow-api)."
+          ),
+        allowed_tools: z
+          .string()
+          .optional()
+          .describe(
+            "Lista de tools permitidas ao Claude Code, separadas por " +
+              "vírgula (ex: 'Bash,Read,Write,Edit'). Por omissão: " +
+              "'Bash,Read,Write,Edit,Grep,Glob'. Mantém restrito ao " +
+              "necessário — nunca uses isto para dar acesso irrestrito."
+          ),
+      },
+      async ({ prompt, project_path, allowed_tools }) => {
+        const supabase = getClient();
+        if (!supabase) {
+          return {
+            content: [
+              { type: "text", text: "Supabase não configurado — não é possível despachar a tarefa." },
+            ],
+          };
+        }
+        const row = {
+          prompt,
+          project_path,
+          status: "pending",
+        };
+        if (allowed_tools) row.allowed_tools = allowed_tools;
+
+        const { data, error } = await supabase
+          .from("code_tasks")
+          .insert(row)
+          .select("id")
+          .single();
+
+        if (error) {
+          return {
+            content: [{ type: "text", text: `Falha ao criar a tarefa: ${error.message}` }],
+          };
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text:
+                `Tarefa criada (id: ${data.id}). Vai ser executada assim que o ` +
+                `bridge-worker.js na máquina do Luiz a apanhar (worker tem de ` +
+                `estar a correr). Usa check_code_task com este id para ver o ` +
+                `resultado quando estiver pronto.`,
+            },
+          ],
+        };
+      }
+    );
+
+    server.tool(
+      "check_code_task",
+      "Verifica o status/resultado de uma tarefa despachada para o " +
+        "Claude Code local via dispatch_code_task. Se não passares um id, " +
+        "devolve as tarefas mais recentes (pendentes e concluídas).",
+      {
+        id: z.string().optional().describe("ID da tarefa (devolvido por dispatch_code_task)."),
+      },
+      async ({ id }) => {
+        const supabase = getClient();
+        if (!supabase) {
+          return { content: [{ type: "text", text: "Supabase não configurado." }] };
+        }
+
+        let query = supabase
+          .from("code_tasks")
+          .select("id, status, prompt, project_path, result, cost_usd, error_message, created_at, completed_at")
+          .order("created_at", { ascending: false })
+          .limit(10);
+
+        if (id) query = supabase.from("code_tasks").select("*").eq("id", id).single();
+
+        const { data, error } = await query;
+        if (error) {
+          return { content: [{ type: "text", text: `Erro a consultar: ${error.message}` }] };
+        }
+
+        const rows = Array.isArray(data) ? data : [data];
+        const text = rows
+          .map(
+            (t) =>
+              `[${t.status}] ${t.id}\n` +
+              `  Projeto: ${t.project_path}\n` +
+              `  Pedido: ${t.prompt.slice(0, 150)}${t.prompt.length > 150 ? "..." : ""}\n` +
+              (t.result ? `  Resultado: ${t.result.slice(0, 1000)}\n` : "") +
+              (t.error_message ? `  Erro: ${t.error_message}\n` : "") +
+              (t.cost_usd ? `  Custo: $${t.cost_usd}\n` : "")
+          )
+          .join("\n---\n");
+
+        return { content: [{ type: "text", text: text || "Nenhuma tarefa encontrada." }] };
+      }
+    );
   },
   {},
   { basePath: "/api" }
