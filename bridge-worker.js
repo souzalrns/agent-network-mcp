@@ -88,13 +88,12 @@ async function runTask(task) {
         cwd: task.project_path,
         timeout: 15 * 60 * 1000,
         maxBuffer: 20 * 1024 * 1024,
-        // No Windows, `claude` é instalado como .cmd/.ps1 — execFile sem
-        // shell:true dá ENOENT mesmo que o comando funcione normalmente
-        // no terminal. shell:true resolve isso em qualquer SO.
-        shell: true,
-        // Sem stdin explicitamente fechado, o processo filho fica à
-        // espera de dados que nunca chegam (visto em Windows: "no stdin
-        // data received"). "ignore" diz logo que não há stdin nenhum.
+        // shell:true só é preciso no Windows (claude é instalado como
+        // .cmd/.exe e execFile puro dá ENOENT). Em Linux/Mac o binário é
+        // encontrado directamente, e shell:true é desnecessário — evita-se
+        // para não arriscar reintroduzir o problema de stdin visto no
+        // Windows.
+        shell: process.platform === "win32",
         stdio: ["ignore", "pipe", "pipe"],
       }
     );
