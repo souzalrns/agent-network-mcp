@@ -92,6 +92,10 @@ async function runTask(task) {
         // shell:true dá ENOENT mesmo que o comando funcione normalmente
         // no terminal. shell:true resolve isso em qualquer SO.
         shell: true,
+        // Sem stdin explicitamente fechado, o processo filho fica à
+        // espera de dados que nunca chegam (visto em Windows: "no stdin
+        // data received"). "ignore" diz logo que não há stdin nenhum.
+        stdio: ["ignore", "pipe", "pipe"],
       }
     );
 
