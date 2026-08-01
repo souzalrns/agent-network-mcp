@@ -1,0 +1,141 @@
+name: Extrair imagens de post (carrossel/foto)
+
+# Dispara manualmente (ou via API) passando uma URL de post de imagem/carrossel
+# (Instagram, etc.) que o transcribe.yml não consegue processar por não ter
+# áudio. Descarrega as imagens com yt-dlp, sobe cada uma para o bucket público
+# post-images do Supabase Storage, e grava os URLs públicos + legenda na
+# tabela public.image_posts. Zero custo — corre no runner gratuito do
+# GitHub Actions.
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "URL do post de imagem/carrossel a extrair"
+        required: true
+        type: string
+
+jobs:
+  extrair-imagem:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Instalar dependências
+        run: |
+          pip install -q --upgrade yt-dlp requests
+
+      - name: Descarregar imagens
+        env:
+          POST_URL: ${{ inputs.url }}
+        run: |
+          mkdir -p imgs
+          yt-dlp \
+            --skip-download \
+            --write-thumbnail \
+            --convert-thumbnails jpg \
+            -o "imgs/%(id)s_%(autonumber)s.%(ext)s" \
+            "$POST_URL" || true
+
+          # Fallback: alguns posts de imagem só vêm como "thumbnail" único
+          # via --list-thumbnails; se a pasta ficou vazia, tenta o modo de
+          # download direto (alguns extratores tratam fotos como "vídeo"
+          # de um frame só).
+          if [ -z "$(ls -A imgs 2>/dev/null)" ]; then
+            yt-dlp -o "imgs/%(id)s_%(autonumber)s.%(ext)s" "$POST_URL" || true
+          fi
+
+          echo "Imagens descarregadas:"
+          ls -la imgs/ || echo "(nenhuma)"
+
+      - name: Subir para Supabase Storage e gravar metadados
+        env:
+          POST_URL: ${{ inputs.url }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python3 << 'PYEOF'
+          import json, mimetypes, os, subprocess, requests
+          from pathlib import Path
+          from urllib.parse import urlparse, quote
+
+          url = os.environ["POST_URL"]
+          supabase_url = os.environ["SUPABASE_URL"].rstrip("/")
+          key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+
+          def yt_field(field):
+              try:
+                  out = subprocess.run(
+                      ["yt-dlp", "--skip-download", "--print", f"%({field})s", url],
+                      capture_output=True, text=True, timeout=60
+                  )
+                  return out.stdout.strip()
+              except Exception:
+                  return ""
+
+          title = yt_field("title")
+          uploader = yt_field("uploader")
+          description = yt_field("description")
+
+          host = urlparse(url).netloc.lower()
+          if "instagram" in host:
+              platform = "instagram"
+          elif "tiktok" in host:
+              platform = "tiktok"
+          elif "twitter" in host or host == "x.com":
+              platform = "twitter"
+          else:
+              platform = host or "desconhecido"
+
+          img_dir = Path("imgs")
+          files = sorted(img_dir.glob("*")) if img_dir.exists() else []
+
+          if not files:
+              print("ATENÇÃO: nenhuma imagem foi descarregada. O post pode exigir login, "
+                    "ter sido apagado, ou o extrator do yt-dlp não suporta este formato.")
+
+          public_urls = []
+          for f in files:
+              mime = mimetypes.guess_type(f.name)[0] or "image/jpeg"
+              storage_path = f"{platform}/{f.name}"
+              with open(f, "rb") as fh:
+                  data = fh.read()
+              up_resp = requests.post(
+                  f"{supabase_url}/storage/v1/object/post-images/{quote(storage_path)}",
+                  headers={
+                      "apikey": key,
+                      "Authorization": f"Bearer {key}",
+                      "Content-Type": mime,
+                      "x-upsert": "true",
+                  },
+                  data=data,
+                  timeout=60,
+              )
+              if up_resp.status_code in (200, 201):
+                  public_urls.append(f"{supabase_url}/storage/v1/object/public/post-images/{storage_path}")
+              else:
+                  print(f"Falha ao subir {f.name}: {up_resp.status_code} {up_resp.text[:200]}")
+
+          row = {
+              "url": url,
+              "platform": platform,
+              "uploader": uploader,
+              "caption": description or title,
+              "image_urls": public_urls,
+              "image_count": len(public_urls),
+          }
+
+          resp = requests.post(
+              f"{supabase_url}/rest/v1/image_posts",
+              headers={
+                  "apikey": key,
+                  "Authorization": f"Bearer {key}",
+                  "Content-Type": "application/json",
+                  "Prefer": "return=representation",
+              },
+              data=json.dumps(row),
+              timeout=30,
+          )
+          resp.raise_for_status()
+          print(f"Gravado no Supabase ({len(public_urls)} imagens):")
+          print(json.dumps(resp.json(), ensure_ascii=False, indent=2))
+          PYEOF
