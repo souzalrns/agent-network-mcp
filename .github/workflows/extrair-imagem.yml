@@ -29,6 +29,11 @@ jobs:
           POST_URL: ${{ inputs.url }}
         run: |
           mkdir -p imgs
+          echo "=== DEBUG: yt-dlp --dump-json ==="
+          yt-dlp --dump-json "$POST_URL" 2>&1 | head -c 3000
+          echo ""
+          echo "=== DEBUG: fim do dump-json ==="
+
           yt-dlp \
             --skip-download \
             --write-thumbnail \
