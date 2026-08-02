@@ -1,0 +1,72 @@
+name: Testar consulta ao portal da Justiça (diagnóstico)
+
+on:
+  workflow_dispatch:
+    inputs:
+      numero_processo:
+        description: "Número do processo (ex: 103393/24)"
+        required: true
+        type: string
+      chave_consulta:
+        description: "Chave de consulta (ex: 0997-8215-7825)"
+        required: true
+        type: string
+
+jobs:
+  testar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Instalar dependências
+        run: pip install -q requests beautifulsoup4
+
+      - name: Buscar página inicial e tentar consulta
+        env:
+          NUMERO: ${{ inputs.numero_processo }}
+          CHAVE: ${{ inputs.chave_consulta }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python3 << 'PYEOF'
+          import os, json, requests
+
+          numero = os.environ["NUMERO"]
+          chave = os.environ["CHAVE"]
+          supabase_url = os.environ["SUPABASE_URL"].rstrip("/")
+          key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+
+          session = requests.Session()
+          session.headers.update({
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
+          })
+
+          base_url = "https://meu.registo.justica.gov.pt/Pedidos/Consultar-estado-do-processo-de-nacionalidade"
+
+          resultado = {"numero": numero, "chave": chave}
+
+          try:
+              r1 = session.get(base_url, timeout=20)
+              resultado["get_status"] = r1.status_code
+              resultado["get_html_length"] = len(r1.text)
+              resultado["get_html_preview"] = r1.text[:3000]
+              resultado["get_final_url"] = r1.url
+          except Exception as e:
+              resultado["get_error"] = str(e)
+
+          # Grava o diagnóstico no Supabase para eu conseguir ler o resultado
+          row = {
+              "dump_exit": "diagnostico-portal-justica",
+              "dump_stdout": json.dumps(resultado, ensure_ascii=False)[:15000],
+              "dump_stderr": "",
+              "thumb_stdout": "",
+              "thumb_stderr": "",
+          }
+          requests.post(
+              f"{supabase_url}/rest/v1/debug_logs",
+              headers={"apikey": key, "Authorization": f"Bearer {key}",
+                       "Content-Type": "application/json", "Prefer": "return=minimal"},
+              data=json.dumps(row), timeout=30,
+          )
+          print("Diagnóstico gravado no Supabase (tabela debug_logs).")
+          print(json.dumps({k: v for k, v in resultado.items() if k != "get_html_preview"}, indent=2, ensure_ascii=False))
+          PYEOF
