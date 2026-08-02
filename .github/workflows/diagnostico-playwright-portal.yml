@@ -1,0 +1,119 @@
+name: Diagnóstico visual do portal (Playwright)
+
+on:
+  workflow_dispatch:
+    inputs:
+      numero_processo:
+        description: "Número do processo (ex: 103393/24)"
+        required: true
+        type: string
+      chave_consulta:
+        description: "Chave de consulta (ex: 0997-8215-7825)"
+        required: true
+        type: string
+
+jobs:
+  diagnostico:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Instalar dependências
+        run: |
+          pip install -q playwright requests
+          playwright install --with-deps chromium
+
+      - name: Capturar formulário e tentar preencher
+        env:
+          NUMERO: ${{ inputs.numero_processo }}
+          CHAVE: ${{ inputs.chave_consulta }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python3 << 'PYEOF'
+          import os, json, requests
+          from playwright.sync_api import sync_playwright
+
+          numero = os.environ["NUMERO"]
+          chave = os.environ["CHAVE"]
+          supabase_url = os.environ["SUPABASE_URL"].rstrip("/")
+          key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+          url = "https://meu.registo.justica.gov.pt/Pedidos/Consultar-estado-do-processo-de-nacionalidade"
+
+          log = {"passos": []}
+
+          def upload_screenshot(path, nome):
+              with open(path, "rb") as f:
+                  data = f.read()
+              r = requests.post(
+                  f"{supabase_url}/storage/v1/object/post-images/diagnostico-portal/{nome}",
+                  headers={"apikey": key, "Authorization": f"Bearer {key}",
+                           "Content-Type": "image/png", "x-upsert": "true"},
+                  data=data, timeout=60,
+              )
+              return f"{supabase_url}/storage/v1/object/public/post-images/diagnostico-portal/{nome}" if r.status_code in (200, 201) else f"FALHOU: {r.status_code}"
+
+          with sync_playwright() as p:
+              browser = p.chromium.launch()
+              page = browser.new_page(viewport={"width": 1280, "height": 900})
+
+              page.goto(url, wait_until="networkidle", timeout=30000)
+              page.wait_for_timeout(2000)  # dá tempo ao React renderizar
+
+              page.screenshot(path="1_inicial.png", full_page=True)
+              log["screenshot_1_inicial"] = upload_screenshot("1_inicial.png", "1_inicial.png")
+
+              # Lista todos os inputs visíveis para eu perceber a estrutura real
+              inputs_info = page.eval_on_selector_all(
+                  "input, textarea, select",
+                  """els => els.map(e => ({
+                      tag: e.tagName, type: e.type, name: e.name, id: e.id,
+                      placeholder: e.placeholder, ariaLabel: e.getAttribute('aria-label'),
+                      visible: e.offsetParent !== null
+                  }))"""
+              )
+              log["inputs_encontrados"] = inputs_info
+
+              buttons_info = page.eval_on_selector_all(
+                  "button, input[type=submit]",
+                  """els => els.map(e => ({
+                      text: e.innerText || e.value, id: e.id, visible: e.offsetParent !== null
+                  }))"""
+              )
+              log["botoes_encontrados"] = buttons_info
+
+              # Tenta preencher os dois primeiros inputs de texto visíveis (heurística)
+              try:
+                  visiveis = [i for i in inputs_info if i["visible"] and i["type"] in ("text", "tel", "")]
+                  if len(visiveis) >= 2:
+                      page.locator("input:visible").nth(0).fill(numero)
+                      page.locator("input:visible").nth(1).fill(chave)
+                      page.screenshot(path="2_preenchido.png", full_page=True)
+                      log["screenshot_2_preenchido"] = upload_screenshot("2_preenchido.png", "2_preenchido.png")
+
+                      # Tenta submeter clicando no primeiro botão visível
+                      if buttons_info:
+                          page.locator("button:visible, input[type=submit]:visible").first.click()
+                          page.wait_for_timeout(3000)
+                          page.screenshot(path="3_resultado.png", full_page=True)
+                          log["screenshot_3_resultado"] = upload_screenshot("3_resultado.png", "3_resultado.png")
+                          log["texto_resultado"] = page.inner_text("body")[:3000]
+              except Exception as e:
+                  log["erro_preenchimento"] = str(e)
+
+              browser.close()
+
+          # Grava tudo no Supabase
+          row = {
+              "dump_exit": "diagnostico-playwright-portal",
+              "dump_stdout": json.dumps(log, ensure_ascii=False, indent=2)[:15000],
+              "dump_stderr": "",
+              "thumb_stdout": "", "thumb_stderr": "",
+          }
+          requests.post(
+              f"{supabase_url}/rest/v1/debug_logs",
+              headers={"apikey": key, "Authorization": f"Bearer {key}",
+                       "Content-Type": "application/json", "Prefer": "return=minimal"},
+              data=json.dumps(row), timeout=30,
+          )
+          print(json.dumps(log, indent=2, ensure_ascii=False))
+          PYEOF
