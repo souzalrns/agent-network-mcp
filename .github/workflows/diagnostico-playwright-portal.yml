@@ -41,6 +41,21 @@ jobs:
 
           log = {"passos": []}
 
+          def gravar_log():
+              row = {
+                  "dump_exit": "diagnostico-playwright-portal",
+                  "dump_stdout": json.dumps(log, ensure_ascii=False, indent=2)[:15000],
+                  "dump_stderr": "",
+                  "thumb_stdout": "", "thumb_stderr": "",
+              }
+              requests.post(
+                  f"{supabase_url}/rest/v1/debug_logs",
+                  headers={"apikey": key, "Authorization": f"Bearer {key}",
+                           "Content-Type": "application/json", "Prefer": "return=minimal"},
+                  data=json.dumps(row), timeout=30,
+              )
+              print(json.dumps(log, indent=2, ensure_ascii=False))
+
           def upload_screenshot(path, nome):
               with open(path, "rb") as f:
                   data = f.read()
@@ -50,70 +65,62 @@ jobs:
                            "Content-Type": "image/png", "x-upsert": "true"},
                   data=data, timeout=60,
               )
-              return f"{supabase_url}/storage/v1/object/public/post-images/diagnostico-portal/{nome}" if r.status_code in (200, 201) else f"FALHOU: {r.status_code}"
+              return f"{supabase_url}/storage/v1/object/public/post-images/diagnostico-portal/{nome}" if r.status_code in (200, 201) else f"FALHOU upload: {r.status_code} {r.text[:200]}"
 
-          with sync_playwright() as p:
-              browser = p.chromium.launch()
-              page = browser.new_page(viewport={"width": 1280, "height": 900})
+          try:
+              with sync_playwright() as p:
+                  browser = p.chromium.launch()
+                  page = browser.new_page(viewport={"width": 1280, "height": 900})
 
-              page.goto(url, wait_until="networkidle", timeout=30000)
-              page.wait_for_timeout(2000)  # dá tempo ao React renderizar
+                  page.goto(url, wait_until="networkidle", timeout=30000)
+                  page.wait_for_timeout(2000)  # dá tempo ao React renderizar
 
-              page.screenshot(path="1_inicial.png", full_page=True)
-              log["screenshot_1_inicial"] = upload_screenshot("1_inicial.png", "1_inicial.png")
+                  page.screenshot(path="1_inicial.png", full_page=True)
+                  log["screenshot_1_inicial"] = upload_screenshot("1_inicial.png", "1_inicial.png")
 
-              # Lista todos os inputs visíveis para eu perceber a estrutura real
-              inputs_info = page.eval_on_selector_all(
-                  "input, textarea, select",
-                  """els => els.map(e => ({
-                      tag: e.tagName, type: e.type, name: e.name, id: e.id,
-                      placeholder: e.placeholder, ariaLabel: e.getAttribute('aria-label'),
-                      visible: e.offsetParent !== null
-                  }))"""
-              )
-              log["inputs_encontrados"] = inputs_info
+                  # Lista todos os inputs visíveis para eu perceber a estrutura real
+                  inputs_info = page.eval_on_selector_all(
+                      "input, textarea, select",
+                      """els => els.map(e => ({
+                          tag: e.tagName, type: e.type, name: e.name, id: e.id,
+                          placeholder: e.placeholder, ariaLabel: e.getAttribute('aria-label'),
+                          visible: e.offsetParent !== null
+                      }))"""
+                  )
+                  log["inputs_encontrados"] = inputs_info
 
-              buttons_info = page.eval_on_selector_all(
-                  "button, input[type=submit]",
-                  """els => els.map(e => ({
-                      text: e.innerText || e.value, id: e.id, visible: e.offsetParent !== null
-                  }))"""
-              )
-              log["botoes_encontrados"] = buttons_info
+                  buttons_info = page.eval_on_selector_all(
+                      "button, input[type=submit]",
+                      """els => els.map(e => ({
+                          text: e.innerText || e.value, id: e.id, visible: e.offsetParent !== null
+                      }))"""
+                  )
+                  log["botoes_encontrados"] = buttons_info
 
-              # Tenta preencher os dois primeiros inputs de texto visíveis (heurística)
-              try:
-                  visiveis = [i for i in inputs_info if i["visible"] and i["type"] in ("text", "tel", "")]
-                  if len(visiveis) >= 2:
-                      page.locator("input:visible").nth(0).fill(numero)
-                      page.locator("input:visible").nth(1).fill(chave)
-                      page.screenshot(path="2_preenchido.png", full_page=True)
-                      log["screenshot_2_preenchido"] = upload_screenshot("2_preenchido.png", "2_preenchido.png")
+                  # Tenta preencher os dois primeiros inputs de texto visíveis (heurística)
+                  try:
+                      visiveis = [i for i in inputs_info if i["visible"] and i["type"] in ("text", "tel", "")]
+                      if len(visiveis) >= 2:
+                          page.locator("input:visible").nth(0).fill(numero)
+                          page.locator("input:visible").nth(1).fill(chave)
+                          page.screenshot(path="2_preenchido.png", full_page=True)
+                          log["screenshot_2_preenchido"] = upload_screenshot("2_preenchido.png", "2_preenchido.png")
 
-                      # Tenta submeter clicando no primeiro botão visível
-                      if buttons_info:
-                          page.locator("button:visible, input[type=submit]:visible").first.click()
-                          page.wait_for_timeout(3000)
-                          page.screenshot(path="3_resultado.png", full_page=True)
-                          log["screenshot_3_resultado"] = upload_screenshot("3_resultado.png", "3_resultado.png")
-                          log["texto_resultado"] = page.inner_text("body")[:3000]
-              except Exception as e:
-                  log["erro_preenchimento"] = str(e)
+                          # Tenta submeter clicando no primeiro botão visível
+                          if buttons_info:
+                              page.locator("button:visible, input[type=submit]:visible").first.click()
+                              page.wait_for_timeout(3000)
+                              page.screenshot(path="3_resultado.png", full_page=True)
+                              log["screenshot_3_resultado"] = upload_screenshot("3_resultado.png", "3_resultado.png")
+                              log["texto_resultado"] = page.inner_text("body")[:3000]
+                  except Exception as e:
+                      log["erro_preenchimento"] = str(e)
 
-              browser.close()
+                  browser.close()
+          except Exception as e:
+              import traceback
+              log["erro_fatal"] = str(e)
+              log["traceback"] = traceback.format_exc()[:4000]
 
-          # Grava tudo no Supabase
-          row = {
-              "dump_exit": "diagnostico-playwright-portal",
-              "dump_stdout": json.dumps(log, ensure_ascii=False, indent=2)[:15000],
-              "dump_stderr": "",
-              "thumb_stdout": "", "thumb_stderr": "",
-          }
-          requests.post(
-              f"{supabase_url}/rest/v1/debug_logs",
-              headers={"apikey": key, "Authorization": f"Bearer {key}",
-                       "Content-Type": "application/json", "Prefer": "return=minimal"},
-              data=json.dumps(row), timeout=30,
-          )
-          print(json.dumps(log, indent=2, ensure_ascii=False))
+          gravar_log()
           PYEOF
