@@ -97,22 +97,19 @@ jobs:
                   )
                   log["botoes_encontrados"] = buttons_info
 
-                  # Tenta preencher os dois primeiros inputs de texto visíveis (heurística)
+                  # Tenta preencher o campo real (só um: a chave de consulta,
+                  # formato xxxx-xxxx-xxxx) e submeter
                   try:
-                      visiveis = [i for i in inputs_info if i["visible"] and i["type"] in ("text", "tel", "")]
-                      if len(visiveis) >= 2:
-                          page.locator("input:visible").nth(0).fill(numero)
-                          page.locator("input:visible").nth(1).fill(chave)
-                          page.screenshot(path="2_preenchido.png", full_page=True)
-                          log["screenshot_2_preenchido"] = upload_screenshot("2_preenchido.png", "2_preenchido.png")
+                      page.fill("#Input_TextVar", chave)
+                      page.screenshot(path="2_preenchido.png", full_page=True)
+                      log["screenshot_2_preenchido"] = upload_screenshot("2_preenchido.png", "2_preenchido.png")
 
-                          # Tenta submeter clicando no primeiro botão visível
-                          if buttons_info:
-                              page.locator("button:visible, input[type=submit]:visible").first.click()
-                              page.wait_for_timeout(3000)
-                              page.screenshot(path="3_resultado.png", full_page=True)
-                              log["screenshot_3_resultado"] = upload_screenshot("3_resultado.png", "3_resultado.png")
-                              log["texto_resultado"] = page.inner_text("body")[:3000]
+                      page.get_by_role("button", name="Pesquisar").click()
+                      page.wait_for_timeout(4000)
+                      page.screenshot(path="3_resultado.png", full_page=True)
+                      log["screenshot_3_resultado"] = upload_screenshot("3_resultado.png", "3_resultado.png")
+                      log["texto_resultado"] = page.inner_text("body")[:3000]
+                      log["url_apos_submeter"] = page.url
                   except Exception as e:
                       log["erro_preenchimento"] = str(e)
 
