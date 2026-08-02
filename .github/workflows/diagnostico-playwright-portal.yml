@@ -72,8 +72,8 @@ jobs:
                   browser = p.chromium.launch()
                   page = browser.new_page(viewport={"width": 1280, "height": 900})
 
-                  page.goto(url, wait_until="networkidle", timeout=30000)
-                  page.wait_for_timeout(2000)  # dá tempo ao React renderizar
+                  page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                  page.wait_for_timeout(5000)  # dá tempo ao React renderizar (networkidle nunca chega, há tráfego contínuo)
 
                   page.screenshot(path="1_inicial.png", full_page=True)
                   log["screenshot_1_inicial"] = upload_screenshot("1_inicial.png", "1_inicial.png")
