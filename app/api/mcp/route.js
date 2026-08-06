@@ -8,7 +8,7 @@ import {
   getClient,
   getToolEvaluations,
 } from "../../../lib/memory.js";
-import { retrieveContext } from "../../../lib/knowledge.js";
+import { retrieveContext, ingestDocument } from "../../../lib/knowledge.js";
 
 // Usamos o Google Gemini em vez da API paga da Anthropic — o tier gratuito
 // do Gemini (AI Studio) não exige cartão de crédito e é generoso o
@@ -283,6 +283,54 @@ const handler = createMcpHandler(
         };
       }
     );
+    server.tool(
+      "ingest_knowledge",
+      "Alimenta a base de conhecimento (RAG) de um agente com conteúdo " +
+        "real — divide o texto em pedaços, gera embedding de cada um " +
+        "(Gemini) e guarda em knowledge_chunks. Usa isto sempre que houver " +
+        "uma skill, norma técnica, ou documento de referência novo para um " +
+        "agente consultar em respostas futuras, em vez de colar o texto " +
+        "inteiro no systemPrompt dele.",
+      {
+        agent: z
+          .enum(Object.keys(AGENTS))
+          .describe("ID do agente a que este conhecimento pertence."),
+        source: z
+          .string()
+          .describe("Nome curto da fonte (ex: 'SKILL.md usucapiao PT-BR')."),
+        text: z
+          .string()
+          .describe("O conteúdo completo a ingerir, em texto livre."),
+      },
+      async ({ agent, source, text }) => {
+        const supabase = getClient();
+        if (!supabase) {
+          return {
+            content: [
+              { type: "text", text: "Supabase não configurado — RAG indisponível." },
+            ],
+          };
+        }
+        try {
+          const result = await ingestDocument(supabase, agent, source, text);
+          return {
+            content: [
+              {
+                type: "text",
+                text:
+                  `Ingerido para '${agent}': ${result.inserted}/${result.total} pedaços guardados` +
+                  (result.errors.length ? `. Erros: ${result.errors.join("; ")}` : "."),
+              },
+            ],
+          };
+        } catch (err) {
+          return {
+            content: [{ type: "text", text: `Falha na ingestão: ${err.message}` }],
+          };
+        }
+      }
+    );
+
     server.tool(
       "dispatch_code_task",
       "Envia uma tarefa para ser executada pelo Claude Code na máquina " +
