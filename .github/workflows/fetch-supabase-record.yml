@@ -13,6 +13,10 @@ on:
         required: true
         type: string
 
+permissions:
+  issues: write
+  contents: read
+
 jobs:
   fetch:
     runs-on: ubuntu-latest
@@ -28,4 +32,5 @@ jobs:
             -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
             -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY")
           echo "$RESULT" > result.json
+          cat result.json
           gh issue create --title "fetch-result-${{ github.run_id }}" --body-file result.json --repo ${{ github.repository }}
