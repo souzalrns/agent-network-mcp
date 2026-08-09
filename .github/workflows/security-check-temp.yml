@@ -1,0 +1,30 @@
+name: Verificacao de seguranca (temporario)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Testar se rota protegida exige login
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "=== Testando https://vianna-gestao.vercel.app/ sem cookies de sessao ===" > result.txt
+          HTTP_CODE=$(curl -s -o body.html -w "%{http_code}" -L --max-redirs 0 "https://vianna-gestao.vercel.app/")
+          echo "HTTP status (sem seguir redirect): $HTTP_CODE" >> result.txt
+          echo "" >> result.txt
+          echo "=== Headers da resposta ===" >> result.txt
+          curl -s -I --max-redirs 0 "https://vianna-gestao.vercel.app/" >> result.txt
+          echo "" >> result.txt
+          echo "=== Primeiros 500 caracteres do corpo ===" >> result.txt
+          head -c 500 body.html >> result.txt
+
+          cat result.txt
+          gh issue create --title "security-check-${{ github.run_id }}" --body-file result.txt --repo souzalrns/agent-network-mcp
