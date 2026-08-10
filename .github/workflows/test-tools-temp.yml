@@ -17,39 +17,46 @@ jobs:
           python-version: '3.11'
 
       - name: Instalar e testar GLiNER2
+        continue-on-error: true
         run: |
-          pip install gliner2 --quiet
+          set +e
+          pip install gliner2 --quiet > gliner2_install.txt 2>&1
+          echo "INSTALL EXIT: $?" >> gliner2_install.txt
           python3 << 'EOF' > gliner2_result.txt 2>&1
           from gliner2 import GLiNER2
           model = GLiNER2.from_pretrained("fastino/gliner2-base-v1")
           texto = "Kathia Vianna e advogada na ViannaLegal, especialista em cidadania portuguesa. O escritorio fica em Portugal."
           resultado = model.extract_entities(texto, ["pessoa", "profissao", "empresa", "pais"])
           print("ENTIDADES:", resultado)
-
-          # Teste de classificacao de texto (caso de uso: triagem de mensagens)
           texto2 = "Oi, gostaria de saber se ainda tenho direito a cidadania portuguesa pelo meu bisavo."
           classe = model.classify_text(texto2, ["duvida_juridica", "reclamacao", "elogio", "spam"])
           print("CLASSIFICACAO:", classe)
           EOF
-          echo "EXIT CODE: $?" >> gliner2_result.txt
+          echo "RUN EXIT: $?" >> gliner2_result.txt
 
       - name: Instalar e testar SkillOpt
+        continue-on-error: true
         run: |
-          pip install skillopt --quiet 2>&1 | tee skillopt_install.txt
-          skillopt --help > skillopt_result.txt 2>&1 || echo "FALHOU" >> skillopt_result.txt
-          skillopt --version >> skillopt_result.txt 2>&1 || true
+          set +e
+          pip install skillopt --quiet > skillopt_install.txt 2>&1
+          echo "INSTALL EXIT: $?" >> skillopt_install.txt
+          skillopt --help > skillopt_result.txt 2>&1
+          echo "HELP EXIT: $?" >> skillopt_result.txt
 
       - name: Publicar resultados
         if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "## GLiNER2" > summary.md
-          cat gliner2_result.txt >> summary.md
+          echo "## GLiNER2 - instalacao" > summary.md
+          cat gliner2_install.txt >> summary.md 2>/dev/null || echo "(sem ficheiro)" >> summary.md
           echo "" >> summary.md
-          echo "## SkillOpt (instalacao)" >> summary.md
-          cat skillopt_install.txt >> summary.md
+          echo "## GLiNER2 - teste real" >> summary.md
+          cat gliner2_result.txt >> summary.md 2>/dev/null || echo "(sem ficheiro)" >> summary.md
           echo "" >> summary.md
-          echo "## SkillOpt (--help)" >> summary.md
-          cat skillopt_result.txt >> summary.md
-          gh issue create --title "test-tools-${{ github.run_id }}" --body-file summary.md --repo souzalrns/agent-network-mcp
+          echo "## SkillOpt - instalacao" >> summary.md
+          cat skillopt_install.txt >> summary.md 2>/dev/null || echo "(sem ficheiro)" >> summary.md
+          echo "" >> summary.md
+          echo "## SkillOpt --help" >> summary.md
+          cat skillopt_result.txt >> summary.md 2>/dev/null || echo "(sem ficheiro)" >> summary.md
+          gh issue create --title "test-tools-v2-${{ github.run_id }}" --body-file summary.md --repo souzalrns/agent-network-mcp
