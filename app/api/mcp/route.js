@@ -4,7 +4,7 @@ import { AGENTS } from "../../../lib/agents.js";
 import {
   getProjectState,
   setProjectState,
-  logAction,
+  logAgentCall,
   getClient,
   getToolEvaluations,
 } from "../../../lib/memory.js";
@@ -159,8 +159,6 @@ async function runAgent(agentId, userRequest) {
     1500
   );
 
-  await logAction(agentId, agentId, summary.slice(0, 500));
-
   // Fecha o ciclo de memória: grava automaticamente um snapshot da
   // interacção em project_state, para que a próxima chamada a este
   // agente já veja "last_interaction" no stateSummary acima.
@@ -219,15 +217,26 @@ const handler = createMcpHandler(
           };
         }
 
-        const summary = await runAgent(agentId, request);
-        return {
-          content: [
-            {
-              type: "text",
-              text: `[Agente: ${agentId}]\n\n${summary}`,
-            },
-          ],
-        };
+        let success = false;
+        try {
+          const summary = await runAgent(agentId, request);
+          success = true;
+          return {
+            content: [
+              {
+                type: "text",
+                text: `[Agente: ${agentId}]\n\n${summary}`,
+              },
+            ],
+          };
+        } finally {
+          await logAgentCall({
+            agent: agentId,
+            summary: request.slice(0, 200),
+            success,
+            origem: "orquestrador",
+          });
+        }
       }
     );
 
@@ -240,8 +249,19 @@ const handler = createMcpHandler(
         request: z.string().describe("O pedido a enviar a esse agente."),
       },
       async ({ agent, request }) => {
-        const summary = await runAgent(agent, request);
-        return { content: [{ type: "text", text: summary }] };
+        let success = false;
+        try {
+          const summary = await runAgent(agent, request);
+          success = true;
+          return { content: [{ type: "text", text: summary }] };
+        } finally {
+          await logAgentCall({
+            agent,
+            summary: request.slice(0, 200),
+            success,
+            origem: "chamada_direta",
+          });
+        }
       }
     );
 
@@ -449,6 +469,65 @@ const handler = createMcpHandler(
           .join("\n---\n");
 
         return { content: [{ type: "text", text: text || "Nenhuma tarefa encontrada." }] };
+      }
+    );
+
+    server.tool(
+      "log_execution",
+      "Regista manualmente em agent_log uma execução que o orquestrador " +
+        "(Claude, no chat) resolveu diretamente usando uma Capacidade do " +
+        "catálogo, sem passar por run_specific_agent nem ask_agent_network. " +
+        "Usa isto sempre que resolveres uma demanda dessa forma, para a " +
+        "execução não ficar por registar.",
+      {
+        agent: z
+          .string()
+          .describe("ID do agente/projeto a que esta execução pertence."),
+        demanda_resumo: z
+          .string()
+          .describe("Resumo curto da demanda resolvida."),
+        capacidade_id: z
+          .array(z.string())
+          .optional()
+          .describe("IDs das Capacidades do catálogo usadas nesta execução."),
+        fast_path: z
+          .boolean()
+          .describe("Se a demanda foi resolvida pelo caminho rápido (fast path) ou por ciclo completo."),
+        custo_estimado: z
+          .number()
+          .int()
+          .optional()
+          .describe("Custo estimado desta execução, na unidade acordada."),
+        sucesso: z.boolean().describe("Se a execução foi bem-sucedida."),
+        justificativa_full_cycle: z
+          .string()
+          .optional()
+          .describe("Se não usou fast_path, a justificação para o ciclo completo."),
+      },
+      async ({
+        agent,
+        demanda_resumo,
+        capacidade_id,
+        fast_path,
+        custo_estimado,
+        sucesso,
+        justificativa_full_cycle,
+      }) => {
+        await logAgentCall({
+          agent,
+          summary: demanda_resumo.slice(0, 200),
+          success: sucesso,
+          origem: "interno",
+          capacidadeId: capacidade_id,
+          fastPath: fast_path,
+          custoEstimado: custo_estimado,
+          justificativaFullCycle: justificativa_full_cycle,
+        });
+        return {
+          content: [
+            { type: "text", text: `Execução registada em agent_log para '${agent}'.` },
+          ],
+        };
       }
     );
   },
