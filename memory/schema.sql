@@ -37,7 +37,11 @@ create table if not exists knowledge_chunks (
 
 create index if not exists idx_knowledge_chunks_agent on knowledge_chunks (agent_id);
 
--- pesquisa por similaridade (cosine distance) filtrada por agente
+-- pesquisa por similaridade (cosine distance) filtrada por agente,
+-- mais o conhecimento global (agent_id = 'global'), que fica visível
+-- para TODOS os agentes. Regra adicionada em 13/08/2026: sem isto,
+-- conhecimento fundamental (metodologia, constituição) ficava
+-- trancado só no(s) agente(s) em que foi ingerido pela primeira vez.
 create or replace function match_knowledge (
   query_embedding vector(768),
   match_agent_id text,
@@ -48,7 +52,7 @@ language sql stable
 as $$
   select id, content, source, 1 - (embedding <=> query_embedding) as similarity
   from knowledge_chunks
-  where agent_id = match_agent_id
+  where agent_id = match_agent_id or agent_id = 'global'
   order by embedding <=> query_embedding
   limit match_count;
 $$;

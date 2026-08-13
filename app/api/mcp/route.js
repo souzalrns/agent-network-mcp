@@ -310,11 +310,17 @@ const handler = createMcpHandler(
         "(Gemini) e guarda em knowledge_chunks. Usa isto sempre que houver " +
         "uma skill, norma técnica, ou documento de referência novo para um " +
         "agente consultar em respostas futuras, em vez de colar o texto " +
-        "inteiro no systemPrompt dele.",
+        "inteiro no systemPrompt dele. Usa agent='global' para conhecimento " +
+        "fundamental que deve ficar visível para TODOS os agentes da rede " +
+        "(ex: metodologia, princípios da Constituição PCU) — em vez de um " +
+        "ID de agente específico.",
       {
         agent: z
-          .enum(Object.keys(AGENTS))
-          .describe("ID do agente a que este conhecimento pertence."),
+          .enum([...Object.keys(AGENTS), "global"])
+          .describe(
+            "ID do agente a que este conhecimento pertence, ou 'global' " +
+              "para conhecimento visível a todos os agentes."
+          ),
         source: z
           .string()
           .describe("Nome curto da fonte (ex: 'SKILL.md usucapiao PT-BR')."),
