@@ -1,6 +1,6 @@
 # Rede de Agentes LRNSdigital
 
-> Servidor MCP com 32 agentes especializados, roteamento automático via LLM, memória vetorial persistente e execução remota de código — tudo a custo zero.
+> Servidor MCP com 33 agentes especializados, roteamento automático via LLM, memória vetorial persistente e execução remota de código — tudo a custo zero.
 
 [🔗 Ver Aplicação em Produção](https://agent-network-mcp-oddn.vercel.app)
 
@@ -17,7 +17,7 @@ Gerir ~10 negócios em simultâneo significa contexto técnico e de domínio dis
 
 ## Principais Funcionalidades
 
-- **32 agentes especializados** por domínio de negócio (jurídico, engenharia, design, dados, marketing, entre outros) — roteados automaticamente por linguagem natural
+- **33 agentes especializados** por domínio de negócio (jurídico, engenharia, design, dados, marketing, entre outros) — roteados automaticamente por linguagem natural
 - **Memória vetorial (RAG)** por agente + conhecimento `global` partilhado por toda a rede
 - **Execução remota de código** numa VM própria via fila assíncrona (Claude Code local, sem SSH manual)
 - **Registo automático de execuções** (`agent_log`) para auditoria e aprendizagem futura
@@ -33,7 +33,7 @@ Gerir ~10 negócios em simultâneo significa contexto técnico e de domínio dis
 
 1. **Custo zero por desenho, não por sorte:** todo o roteamento corre em Gemini Flash Lite gratuito — a arquitetura foi pensada desde o início para nunca depender de créditos pagos para operação normal.
 2. **Conhecimento global vs. por agente:** a busca semântica filtra por `agent_id` específico OU `agent_id = 'global'` na mesma função SQL — conhecimento fundamental (metodologia, princípios) fica visível a todos os 32 agentes sem duplicação manual em cada um.
-3. **Onboarding de agente à prova de falha silenciosa:** todo agente novo exige linha correspondente na tabela `projects` antes de aceitar `save_project_state` — descoberta depois de 26 de 28 agentes terem ficado sem essa linha, causando falhas de foreign key invisíveis até serem procuradas ativamente.
+3. **Onboarding de agente à prova de falha silenciosa (em progresso):** todo agente novo devia exigir linha correspondente na tabela `projects` antes de aceitar `save_project_state`. Na prática, esta regra continua a ser esquecida — os 3 agentes horizontais mais recentes (comunicações, marketing, produto/tech) ficaram sem essa linha até serem detetados numa auditoria de rotina. A correção é sempre rápida; o processo de onboarding que a previna de acontecer de todo ainda não existe.
 
 ## Como Rodar Localmente
 
