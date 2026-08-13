@@ -1,63 +1,56 @@
-# agent-network-mcp
+# Rede de Agentes LRNSdigital
 
-Servidor MCP da rede de agentes LRNSdigital, pronto para deploy no Vercel.
-Este é o "segundo cérebro" acessível diretamente do claude.ai — depois de
-publicado e ligado como conector, escreves normalmente no chat e a estrutura
-de router + agentes + memória corre por trás, sem precisares de terminal.
+> Servidor MCP com 32 agentes especializados, roteamento automático via LLM, memória vetorial persistente e execução remota de código — tudo a custo zero.
 
-## Deploy no Vercel
+[🔗 Ver Aplicação em Produção](https://agent-network-mcp-oddn.vercel.app)
 
-1. No dashboard do Vercel: **Add New → Project** → importa este repositório.
-2. Em **Environment Variables**, adiciona (ver `.env.example`):
-   - `GEMINI_API_KEY` — chave **gratuita** do Google AI Studio, sem cartão de
-     crédito. Cria em https://aistudio.google.com/apikey
-   - `AGENT_MODEL` (opcional, default `gemini-2.5-flash`)
-   - `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` (opcionais — sem isto os
-     agentes funcionam mas sem memória persistente entre sessões)
-3. Deploy. O Vercel dá-te uma URL tipo `https://agent-network-mcp.vercel.app`.
-4. Se fores usar memória, corre o `memory/schema.sql` do protótipo anterior
-   no teu projeto Supabase (mesmas tabelas `project_state` e `agent_log`).
+![Status](https://img.shields.io/badge/Status-Em%20Produção-brightgreen)
+![Vercel](https://img.shields.io/badge/Deploy-Vercel-black)
+![Supabase](https://img.shields.io/badge/DB-Supabase%20pgvector-3ECF8E)
+![Gemini](https://img.shields.io/badge/LLM-Gemini%20Flash%20Lite-4285F4)
 
-## Ligar ao claude.ai
+---
 
-1. claude.ai → **Definições → Conectores → Adicionar conector personalizado**.
-2. URL: `https://<o-teu-projeto>.vercel.app/api/mcp`
-3. Depois de ligado, passas a poder pedir aqui no chat, por exemplo:
-   *"Usa a rede de agentes para verificar o estado do MesaFlow"* — e eu
-   chamo a ferramenta `ask_agent_network` deste servidor automaticamente.
+## O Problema
 
-## Ferramentas expostas
+Gerir ~10 negócios em simultâneo significa contexto técnico e de domínio disperso por dezenas de conversas — cada nova sessão de IA começa do zero, sem memória do que já foi decidido, testado ou construído. Este sistema resolve isso: uma rede de agentes especializados com memória persistente e partilhada, acessível diretamente de qualquer cliente MCP (incluindo claude.ai), sem custo de infraestrutura.
 
-- **`list_agents`** — lista os agentes de projeto disponíveis.
-- **`ask_agent_network`** — pedido em linguagem natural; o router escolhe o
-  agente certo automaticamente (fluxo principal).
-- **`run_specific_agent`** — chama diretamente um agente conhecido,
-  ignorando o router.
+## Principais Funcionalidades
 
-## Estrutura
+- **32 agentes especializados** por domínio de negócio (jurídico, engenharia, design, dados, marketing, entre outros) — roteados automaticamente por linguagem natural
+- **Memória vetorial (RAG)** por agente + conhecimento `global` partilhado por toda a rede
+- **Execução remota de código** numa VM própria via fila assíncrona (Claude Code local, sem SSH manual)
+- **Registo automático de execuções** (`agent_log`) para auditoria e aprendizagem futura
 
+## Stack Técnica
+
+- **Runtime:** Node.js, Vercel Serverless Functions (protocolo MCP)
+- **LLM de roteamento:** Google Gemini Flash Lite (tier gratuito, sem cartão de crédito)
+- **Base de dados:** Supabase (PostgreSQL + extensão pgvector para busca semântica)
+- **Automação:** GitHub Actions (transcrição de vídeo, scraping, heartbeat)
+
+## Destaques Técnicos
+
+1. **Custo zero por desenho, não por sorte:** todo o roteamento corre em Gemini Flash Lite gratuito — a arquitetura foi pensada desde o início para nunca depender de créditos pagos para operação normal.
+2. **Conhecimento global vs. por agente:** a busca semântica filtra por `agent_id` específico OU `agent_id = 'global'` na mesma função SQL — conhecimento fundamental (metodologia, princípios) fica visível a todos os 32 agentes sem duplicação manual em cada um.
+3. **Onboarding de agente à prova de falha silenciosa:** todo agente novo exige linha correspondente na tabela `projects` antes de aceitar `save_project_state` — descoberta depois de 26 de 28 agentes terem ficado sem essa linha, causando falhas de foreign key invisíveis até serem procuradas ativamente.
+
+## Como Rodar Localmente
+
+```bash
+git clone https://github.com/souzalrns/agent-network-mcp.git
+cd agent-network-mcp
+npm install
+# Configurar GEMINI_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (ver .env.example)
+npm run dev
 ```
-app/
-├── layout.js         # layout raiz (exigido pelo Next.js)
-├── page.js           # página de confirmação (só texto)
-└── api/mcp/route.js  # o servidor MCP em si (GET/POST)
-lib/
-├── agents.js         # contexto fixo de cada agente (mesaflow, viannalegal)
-└── memory.js         # cliente Supabase (opcional)
-```
 
-## Adicionar um novo agente
+Deploy completo e ligação ao claude.ai como conector: ver instruções detalhadas em [`docs/DEPLOY.md`](./docs/DEPLOY.md) *(mover secção de deploy original para cá)*.
 
-Edita `lib/agents.js` e acrescenta uma entrada ao objeto `AGENTS` — não é
-preciso mexer no `route.js`, ele lê a lista dinamicamente.
+## Estado do Projeto
 
-## Limitações desta primeira versão
+**Em produção**, servindo pedidos reais diariamente. Evolução ativa — arquitetura horizontal consolidada em agosto de 2026, conhecimento global adicionado na mesma altura.
 
-- Sem autenticação no endpoint MCP — qualquer pessoa com a URL consegue
-  chamar as ferramentas. Para uso pessoal é aceitável, mas se partilhares o
-  link ou ligares dados sensíveis, vale a pena adicionar OAuth (o pacote
-  `mcp-handler` suporta isto nativamente — ver docs do Vercel sobre MCP).
-- Sem loop de tool-use para ferramentas externas (GitHub, Vercel) ainda —
-  os agentes respondem e sugerem, mas não executam ações fora deste servidor.
-- Um pedido = uma chamada de router + uma chamada de agente. Sem paralelismo
-  nem consenso entre agentes (não é necessário para o teu volume de uso).
+---
+
+Feito por Luiz Souza • [LinkedIn](#) • [Portfólio](#)
