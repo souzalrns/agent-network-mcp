@@ -23,6 +23,7 @@ function Cartao({ titulo, children, destaque, style }) {
 }
 
 const COR_PRIORIDADE = { alta: CORES.vermelho, media: CORES.amarelo, baixa: CORES.textoFraco };
+const COR_TIPO = { decisao: CORES.vermelho, autorizacao: CORES.verde, bloqueio_externo: CORES.amarelo, acao: CORES.azul, info: CORES.textoFraco };
 
 function Etiqueta({ cor, children }) {
   return (
@@ -57,7 +58,7 @@ function LinhaPendencia({ p }) {
       <div style={{ display: "flex", gap: 6, marginTop: 5, flexWrap: "wrap" }}>
         <Etiqueta cor={COR_PRIORIDADE[p.prioridade] || CORES.textoFraco}>{p.prioridade}</Etiqueta>
         <Etiqueta cor={CORES.textoFraco}>{p.area_label}</Etiqueta>
-        {p.tipo && <Etiqueta cor={CORES.azul}>{p.tipo.replace("_", " ")}</Etiqueta>}
+        {p.tipo && <Etiqueta cor={COR_TIPO[p.tipo] || CORES.azul}>{p.tipo.replace("_", " ")}</Etiqueta>}
         {p.bloqueado_por && <Etiqueta cor={CORES.vermelho}>bloqueada: {p.bloqueado_por}</Etiqueta>}
       </div>
     </div>
