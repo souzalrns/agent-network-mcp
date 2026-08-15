@@ -1,31 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-
-const CORES = {
-  fundo: "#0f1115",
-  cartao: "#181b21",
-  borda: "#2a2e37",
-  texto: "#e6e6e6",
-  textoFraco: "#8b8f98",
-  verde: "#4ade80",
-  amarelo: "#facc15",
-  vermelho: "#f87171",
-  azul: "#60a5fa",
-};
-
-function tempoRelativo(iso) {
-  if (!iso) return "—";
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const s = Math.floor(diffMs / 1000);
-  if (s < 60) return `há ${s}s`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `há ${m}min`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `há ${h}h${m % 60}min`;
-  const d = Math.floor(h / 24);
-  return `há ${d}d`;
-}
+import { CORES, tempoRelativo } from "./_lib/tema.js";
 
 function Cartao({ titulo, children, destaque }) {
   return (
@@ -33,11 +9,11 @@ function Cartao({ titulo, children, destaque }) {
       style={{
         background: CORES.cartao,
         border: `1px solid ${destaque || CORES.borda}`,
-        borderRadius: 10,
-        padding: "1rem 1.25rem",
+        borderRadius: 12,
+        padding: "1.1rem 1.3rem",
       }}
     >
-      <div style={{ color: CORES.textoFraco, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
+      <div style={{ color: CORES.textoFraco, fontSize: 11, fontFamily: "var(--font-mono, monospace)", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
         {titulo}
       </div>
       {children}
@@ -117,12 +93,12 @@ export default function DashboardPage() {
 
   if (!autenticado) {
     return (
-      <main style={{ background: CORES.fundo, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui, sans-serif" }}>
+      <main style={{ background: CORES.fundo, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-display, system-ui), sans-serif" }}>
         <form
           onSubmit={entrar}
-          style={{ background: CORES.cartao, padding: "2rem", borderRadius: 12, border: `1px solid ${CORES.borda}`, width: 320 }}
+          style={{ background: CORES.cartao, padding: "2rem", borderRadius: 14, border: `1px solid ${CORES.borda}`, width: 320 }}
         >
-          <h1 style={{ color: CORES.texto, fontSize: 18, marginBottom: 16 }}>Dashboard — Rede de Agentes</h1>
+          <h1 style={{ color: CORES.texto, fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Dashboard — Rede de Agentes</h1>
           <input
             type="password"
             placeholder="Password"
@@ -130,7 +106,7 @@ export default function DashboardPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
             autoFocus
-            style={{ width: "100%", padding: "0.6rem", borderRadius: 6, border: `1px solid ${CORES.borda}`, background: "#0f1115", color: CORES.texto, marginBottom: 12 }}
+            style={{ width: "100%", padding: "0.6rem 0.7rem", borderRadius: 8, border: `1px solid ${CORES.borda}`, background: CORES.fundo, color: CORES.texto, marginBottom: 12, fontFamily: "var(--font-mono, monospace)", fontSize: 13 }}
           />
           {erroLogin && (
             <div style={{ color: CORES.vermelho, fontSize: 12, marginBottom: 12 }}>⚠ {erroLogin}</div>
@@ -138,7 +114,7 @@ export default function DashboardPage() {
           <button
             type="submit"
             disabled={aLogar}
-            style={{ width: "100%", padding: "0.6rem", borderRadius: 6, border: "none", background: CORES.azul, color: "#0f1115", fontWeight: 600, cursor: aLogar ? "default" : "pointer", opacity: aLogar ? 0.7 : 1 }}
+            style={{ width: "100%", padding: "0.65rem", borderRadius: 8, border: "none", background: CORES.azul, color: "#06131a", fontWeight: 700, cursor: aLogar ? "default" : "pointer", opacity: aLogar ? 0.7 : 1 }}
           >
             {aLogar ? "A entrar…" : "Entrar"}
           </button>
@@ -152,12 +128,32 @@ export default function DashboardPage() {
     : null;
 
   return (
-    <main style={{ background: CORES.fundo, minHeight: "100vh", fontFamily: "system-ui, sans-serif", padding: "1.5rem", color: CORES.texto }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <h1 style={{ fontSize: 20, margin: 0 }}>🔴 Rede de Agentes LRNSdigital — ao vivo</h1>
-        <div style={{ color: CORES.textoFraco, fontSize: 12 }}>
-          {erro ? <span style={{ color: CORES.vermelho }}>⚠ {erro}</span> : `atualizado ${ultimaAtualizacao ? tempoRelativo(ultimaAtualizacao.toISOString()) : "..."}`}
+    <main style={{ background: CORES.fundo, minHeight: "100vh", fontFamily: "var(--font-display, system-ui), sans-serif", padding: "1.5rem", color: CORES.texto }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 10 }}>
+        <div>
+          <h1 style={{ fontSize: 21, fontWeight: 700, margin: 0, letterSpacing: -0.2 }}>Rede de Agentes LRNSdigital</h1>
+          <div style={{ color: CORES.textoFraco, fontSize: 12, fontFamily: "var(--font-mono, monospace)", marginTop: 2 }}>
+            {erro ? <span style={{ color: CORES.vermelho }}>⚠ {erro}</span> : `atualizado há ${ultimaAtualizacao ? tempoRelativo(ultimaAtualizacao.toISOString()) : "..."}`}
+          </div>
         </div>
+        <a
+          href="/dashboard/grafo"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "0.55rem 0.9rem",
+            borderRadius: 8,
+            border: `1px solid ${CORES.bordaForte}`,
+            background: CORES.cartaoElevado,
+            color: CORES.texto,
+            fontSize: 13,
+            textDecoration: "none",
+          }}
+        >
+          <span style={{ width: 8, height: 8, borderRadius: 999, background: CORES.agente, boxShadow: `0 0 6px ${CORES.agente}` }} />
+          Ver constelação da rede →
+        </a>
       </div>
 
       {dados && (
@@ -176,7 +172,7 @@ export default function DashboardPage() {
                     <span style={{ color: t.status === "running" ? CORES.amarelo : CORES.textoFraco, fontWeight: 600 }}>
                       {t.status === "running" ? "▶ A CORRER" : "⏳ EM FILA"}
                     </span>
-                    <span style={{ color: CORES.textoFraco, fontSize: 12 }}>
+                    <span style={{ color: CORES.textoFraco, fontSize: 12, fontFamily: "var(--font-mono, monospace)" }}>
                       {t.started_at ? `desde ${tempoRelativo(t.started_at)}` : `criada ${tempoRelativo(t.created_at)}`}
                     </span>
                   </div>
@@ -199,31 +195,31 @@ export default function DashboardPage() {
             </Cartao>
 
             <Cartao titulo="% Fast-Path (30 dias)">
-              <div style={{ fontSize: 22, fontWeight: 700 }}>{dados.metricasNucleoPCU.pct_fast_path}%</div>
+              <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "var(--font-mono, monospace)" }}>{dados.metricasNucleoPCU.pct_fast_path}%</div>
               <div style={{ fontSize: 12, color: CORES.textoFraco, marginTop: 4 }}>{dados.metricasNucleoPCU.total_execucoes} execuções no período</div>
             </Cartao>
 
             <Cartao titulo="Custo cognitivo (30 dias)">
-              <div style={{ fontSize: 22, fontWeight: 700 }}>{dados.metricasNucleoPCU.custo_total_estimado.toLocaleString("pt-PT")}</div>
+              <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "var(--font-mono, monospace)" }}>{dados.metricasNucleoPCU.custo_total_estimado.toLocaleString("pt-PT")}</div>
               <div style={{ fontSize: 12, color: CORES.textoFraco, marginTop: 4 }}>unidades estimadas</div>
             </Cartao>
 
             <Cartao titulo="Full Cycle sem justificação">
-              <div style={{ fontSize: 22, fontWeight: 700, color: dados.metricasNucleoPCU.full_cycle_sem_justificativa > 0 ? CORES.vermelho : CORES.verde }}>
+              <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "var(--font-mono, monospace)", color: dados.metricasNucleoPCU.full_cycle_sem_justificativa > 0 ? CORES.vermelho : CORES.verde }}>
                 {dados.metricasNucleoPCU.full_cycle_sem_justificativa}
               </div>
               <div style={{ fontSize: 12, color: CORES.textoFraco, marginTop: 4 }}>deve ser sempre 0 (Constituição PCU)</div>
             </Cartao>
 
             <Cartao titulo="Cobertura de conhecimento">
-              <div style={{ fontSize: 22, fontWeight: 700 }}>
+              <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "var(--font-mono, monospace)" }}>
                 {dados.cobertura.agentesComConteudo}/{dados.cobertura.totalAgentes}
               </div>
               <div style={{ fontSize: 12, color: CORES.textoFraco, marginTop: 4 }}>{dados.cobertura.agentesVazios} agentes ainda vazios</div>
             </Cartao>
 
             <Cartao titulo="Pendências em aberto">
-              <div style={{ fontSize: 22, fontWeight: 700 }}>{dados.pendenciasAbertas}</div>
+              <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "var(--font-mono, monospace)" }}>{dados.pendenciasAbertas}</div>
               <div style={{ fontSize: 12, color: CORES.textoFraco, marginTop: 4 }}>em pendencias_negocio</div>
             </Cartao>
           </div>
@@ -238,7 +234,7 @@ export default function DashboardPage() {
                     style={{
                       display: "flex",
                       gap: 10,
-                      padding: "6px 0",
+                      padding: "7px 0",
                       borderTop: `1px solid ${CORES.borda}`,
                       alignItems: "flex-start",
                     }}
@@ -249,13 +245,13 @@ export default function DashboardPage() {
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13 }}>
                         <b>{a.agent}</b>{" "}
-                        <span style={{ color: CORES.textoFraco }}>
+                        <span style={{ color: CORES.textoFraco, fontFamily: "var(--font-mono, monospace)", fontSize: 11 }}>
                           ({a.fast_path ? "fast-path" : "full-cycle"} · {a.origem})
                         </span>
                       </div>
-                      <div style={{ fontSize: 12, color: CORES.textoFraco }}>{a.summary}</div>
+                      <div style={{ fontSize: 12, color: CORES.textoFraco, marginTop: 1 }}>{a.summary}</div>
                     </div>
-                    <span style={{ fontSize: 11, color: CORES.textoFraco, whiteSpace: "nowrap" }}>{tempoRelativo(a.created_at)}</span>
+                    <span style={{ fontSize: 11, color: CORES.textoFraco, whiteSpace: "nowrap", fontFamily: "var(--font-mono, monospace)" }}>{tempoRelativo(a.created_at)}</span>
                   </div>
                 ))}
               </div>
