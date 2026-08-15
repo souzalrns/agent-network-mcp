@@ -2,15 +2,17 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { CORES, tempoRelativo } from "./_lib/tema.js";
+import estilos from "./dashboard.module.css";
 
-function Cartao({ titulo, children, destaque, style }) {
+function Cartao({ titulo, children, style }) {
   return (
     <div
       style={{
         background: CORES.cartao,
-        border: `1px solid ${destaque || CORES.borda}`,
+        border: `1px solid ${CORES.borda}`,
         borderRadius: 12,
-        padding: "1.1rem 1.3rem",
+        padding: "0.9rem 1rem",
+        minWidth: 0,
         ...style,
       }}
     >
@@ -139,17 +141,25 @@ export default function DashboardPage() {
     }
   };
 
+  // Corrige o bug reportado: só a fila de intervenção estava a filtrar por
+  // área; a "pode correr sozinho" ficava sempre igual, por isso clicar numa
+  // área parecia não fazer nada.
   const filaIntervencaoFiltrada = useMemo(() => {
     if (!cockpit) return [];
     return areaSelecionada ? cockpit.filaIntervencao.filter((p) => p.area_slug === areaSelecionada) : cockpit.filaIntervencao;
   }, [cockpit, areaSelecionada]);
 
+  const filaAutonomaFiltrada = useMemo(() => {
+    if (!cockpit) return [];
+    return areaSelecionada ? cockpit.filaAutonoma.filter((p) => p.area_slug === areaSelecionada) : cockpit.filaAutonoma;
+  }, [cockpit, areaSelecionada]);
+
   if (!autenticado) {
     return (
-      <main style={{ background: CORES.fundo, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-display, system-ui), sans-serif" }}>
+      <main style={{ background: CORES.fundo, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-display, system-ui), sans-serif", padding: "1rem" }}>
         <form
           onSubmit={entrar}
-          style={{ background: CORES.cartao, padding: "2rem", borderRadius: 14, border: `1px solid ${CORES.borda}`, width: 320 }}
+          style={{ background: CORES.cartao, padding: "2rem", borderRadius: 14, border: `1px solid ${CORES.borda}`, width: "100%", maxWidth: 320 }}
         >
           <h1 style={{ color: CORES.texto, fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Dashboard — Rede de Agentes</h1>
           <input
@@ -159,7 +169,7 @@ export default function DashboardPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
             autoFocus
-            style={{ width: "100%", padding: "0.6rem 0.7rem", borderRadius: 8, border: `1px solid ${CORES.borda}`, background: CORES.fundo, color: CORES.texto, marginBottom: 12, fontFamily: "var(--font-mono, monospace)", fontSize: 13 }}
+            style={{ width: "100%", padding: "0.6rem 0.7rem", borderRadius: 8, border: `1px solid ${CORES.borda}`, background: CORES.fundo, color: CORES.texto, marginBottom: 12, fontFamily: "var(--font-mono, monospace)", fontSize: 13, boxSizing: "border-box" }}
           />
           {erroLogin && <div style={{ color: CORES.vermelho, fontSize: 12, marginBottom: 12 }}>⚠ {erroLogin}</div>}
           <button
@@ -179,182 +189,171 @@ export default function DashboardPage() {
     : null;
 
   return (
-    <main style={{ background: CORES.fundo, minHeight: "100vh", fontFamily: "var(--font-display, system-ui), sans-serif", color: CORES.texto, display: "flex" }}>
-      {/* Sidebar de áreas */}
-      <aside style={{ width: 220, flexShrink: 0, borderRight: `1px solid ${CORES.borda}`, padding: "1.25rem 1rem", minHeight: "100vh" }}>
-        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>LRNSdigital</div>
-        <div style={{ fontSize: 11, color: CORES.textoFraco, fontFamily: "var(--font-mono, monospace)", marginBottom: 18 }}>cockpit operacional</div>
+    <main style={{ background: CORES.fundo, minHeight: "100vh", fontFamily: "var(--font-display, system-ui), sans-serif", color: CORES.texto }}>
+      <div className={estilos.shell}>
+        {/* Áreas: coluna vertical em ecrãs largos, faixa horizontal de chips em mobile — nada fica escondido atrás de um clique extra */}
+        <aside className={estilos.sidebar}>
+          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>LRNSdigital</div>
+          <div style={{ fontSize: 11, color: CORES.textoFraco, fontFamily: "var(--font-mono, monospace)", marginBottom: 14 }}>cockpit operacional</div>
 
-        <a
-          href="/dashboard/grafo"
-          style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: CORES.textoFraco, textDecoration: "none", marginBottom: 18 }}
-        >
-          <span style={{ width: 6, height: 6, borderRadius: 999, background: CORES.agente, boxShadow: `0 0 6px ${CORES.agente}` }} />
-          constelação da rede →
-        </a>
-
-        <div style={{ fontSize: 11, color: CORES.textoFraco, textTransform: "uppercase", letterSpacing: 0.6, fontFamily: "var(--font-mono, monospace)", marginBottom: 8 }}>
-          áreas
-        </div>
-        <button
-          onClick={() => setAreaSelecionada(null)}
-          style={{
-            display: "block", width: "100%", textAlign: "left", background: "transparent",
-            borderTop: "none", borderRight: "none", borderBottom: "none",
-            borderLeft: areaSelecionada === null ? `2px solid ${CORES.agente}` : "2px solid transparent",
-            color: areaSelecionada === null ? CORES.texto : CORES.textoFraco,
-            fontSize: 12.5, padding: "5px 8px", cursor: "pointer", marginBottom: 1,
-          }}
-        >
-          Todas {cockpit && <span style={{ color: CORES.textoFraco, fontFamily: "var(--font-mono, monospace)" }}>({cockpit.filaIntervencao.length})</span>}
-        </button>
-        {cockpit?.areas.map((a) => (
-          <button
-            key={a.slug}
-            onClick={() => setAreaSelecionada(a.slug)}
-            style={{
-              display: "flex", justifyContent: "space-between", width: "100%", textAlign: "left",
-              background: "transparent",
-              borderTop: "none", borderRight: "none", borderBottom: "none",
-              borderLeft: areaSelecionada === a.slug ? `2px solid ${CORES.agente}` : "2px solid transparent",
-              color: areaSelecionada === a.slug ? CORES.texto : CORES.textoFraco,
-              fontSize: 12.5, padding: "5px 8px", cursor: "pointer", marginBottom: 1,
-            }}
+          <a
+            href="/dashboard/grafo"
+            style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: CORES.textoFraco, textDecoration: "none", marginBottom: 14 }}
           >
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.label}</span>
-            <span style={{ color: CORES.textoFraco, fontFamily: "var(--font-mono, monospace)", fontSize: 11, flexShrink: 0, marginLeft: 6 }}>{a.total}</span>
-          </button>
-        ))}
-      </aside>
+            <span style={{ width: 6, height: 6, borderRadius: 999, background: CORES.agente, boxShadow: `0 0 6px ${CORES.agente}` }} />
+            constelação da rede →
+          </a>
 
-      {/* Main */}
-      <div style={{ flex: 1, padding: "1.5rem", minWidth: 0 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 10 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, letterSpacing: -0.2 }}>Visão geral</h1>
-          <div style={{ color: CORES.textoFraco, fontSize: 12, fontFamily: "var(--font-mono, monospace)" }}>
-            {erro ? <span style={{ color: CORES.vermelho }}>⚠ {erro}</span> : `atualizado há ${ultimaAtualizacao ? tempoRelativo(ultimaAtualizacao.toISOString()) : "..."}`}
+          <div style={{ fontSize: 11, color: CORES.textoFraco, textTransform: "uppercase", letterSpacing: 0.6, fontFamily: "var(--font-mono, monospace)", marginBottom: 8 }}>
+            áreas
           </div>
-        </div>
+          <div className={estilos.areasLista}>
+            <button
+              onClick={() => setAreaSelecionada(null)}
+              className={`${estilos.areaItem} ${areaSelecionada === null ? estilos.ativo : ""}`}
+            >
+              Todas {cockpit && <span style={{ fontFamily: "var(--font-mono, monospace)" }}>({cockpit.filaIntervencao.length + cockpit.filaAutonoma.length})</span>}
+            </button>
+            {cockpit?.areas.map((a) => (
+              <button
+                key={a.slug}
+                onClick={() => setAreaSelecionada(a.slug)}
+                className={`${estilos.areaItem} ${areaSelecionada === a.slug ? estilos.ativo : ""}`}
+              >
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{a.label}</span>
+                <span style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 11, flexShrink: 0, marginLeft: 6 }}>{a.total}</span>
+              </button>
+            ))}
+          </div>
+        </aside>
 
-        {dados && cockpit && (
-          <>
-            {/* KPIs */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 12 }}>
-              <Cartao titulo="Estado da VM">
-                <div style={{ fontSize: 18, fontWeight: 700, color: vmViva ? CORES.verde : CORES.vermelho }}>
-                  {vmViva === null ? "—" : vmViva ? "● Ativa" : "○ Sem sinal"}
-                </div>
-              </Cartao>
-              <Cartao titulo="Fast-path (30d)">
-                <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "var(--font-mono, monospace)" }}>{dados.metricasNucleoPCU.pct_fast_path}%</div>
-              </Cartao>
-              <Cartao titulo="Custo cognitivo (30d)">
-                <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "var(--font-mono, monospace)" }}>{dados.metricasNucleoPCU.custo_total_estimado.toLocaleString("pt-PT")}</div>
-              </Cartao>
-              <Cartao titulo="Cobertura RAG">
-                <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "var(--font-mono, monospace)" }}>{dados.cobertura.agentesComConteudo}/{dados.cobertura.totalAgentes}</div>
-              </Cartao>
-              <Cartao titulo="Agentes nunca usados">
-                <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "var(--font-mono, monospace)", color: cockpit.agentesNuncaUsados.length > 0 ? CORES.amarelo : CORES.verde }}>
-                  {cockpit.agentesNuncaUsados.length}
-                </div>
-              </Cartao>
-              <Cartao titulo="Full-cycle sem justificação">
-                <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "var(--font-mono, monospace)", color: dados.metricasNucleoPCU.full_cycle_sem_justificativa > 0 ? CORES.vermelho : CORES.verde }}>
-                  {dados.metricasNucleoPCU.full_cycle_sem_justificativa}
-                </div>
-              </Cartao>
+        {/* Main */}
+        <div className={estilos.main}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 10 }}>
+            <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, letterSpacing: -0.2 }}>Visão geral</h1>
+            <div style={{ color: CORES.textoFraco, fontSize: 12, fontFamily: "var(--font-mono, monospace)" }}>
+              {erro ? <span style={{ color: CORES.vermelho }}>⚠ {erro}</span> : `atualizado há ${ultimaAtualizacao ? tempoRelativo(ultimaAtualizacao.toISOString()) : "..."}`}
             </div>
+          </div>
 
-            {/* Duas filas */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-              <Cartao titulo={`Precisa de ti agora (${filaIntervencaoFiltrada.length})`}>
-                <div style={{ maxHeight: 340, overflowY: "auto" }}>
-                  {filaIntervencaoFiltrada.length === 0 ? (
-                    <div style={{ color: CORES.textoFraco, fontSize: 13 }}>Nada nesta área a precisar de ti.</div>
-                  ) : (
-                    filaIntervencaoFiltrada.slice(0, 25).map((p) => <LinhaPendencia key={p.id} p={p} />)
-                  )}
-                </div>
-              </Cartao>
-              <Cartao titulo={`Pode correr sozinho (${cockpit.filaAutonoma.length})`}>
-                <div style={{ maxHeight: 340, overflowY: "auto" }}>
-                  {cockpit.filaAutonoma.length === 0 ? (
-                    <div style={{ color: CORES.textoFraco, fontSize: 13 }}>
-                      Ainda nenhuma pendência classificada como autónoma — <code style={{ fontFamily: "var(--font-mono, monospace)" }}>requer_intervencao_humana</code> vem a <code>true</code> por omissão.
-                    </div>
-                  ) : (
-                    cockpit.filaAutonoma.slice(0, 25).map((p) => <LinhaPendencia key={p.id} p={p} />)
-                  )}
-                </div>
-              </Cartao>
-            </div>
-
-            {/* Análises */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginBottom: 12 }}>
-              <Cartao titulo="Pendências por prioridade">
-                {["alta", "media", "baixa"].map((p) => (
-                  <div key={p} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "4px 0" }}>
-                    <Etiqueta cor={COR_PRIORIDADE[p]}>{p}</Etiqueta>
-                    <span style={{ fontFamily: "var(--font-mono, monospace)" }}>{cockpit.porPrioridade[p] || 0}</span>
+          {dados && cockpit && (
+            <>
+              {/* KPIs — 2 colunas em telemóvel, 3 em tablet, 6 em ecrã largo */}
+              <div className={estilos.kpiGrid}>
+                <Cartao titulo="Estado da VM">
+                  <div style={{ fontSize: 17, fontWeight: 700, color: vmViva ? CORES.verde : CORES.vermelho }}>
+                    {vmViva === null ? "—" : vmViva ? "● Ativa" : "○ Sem sinal"}
                   </div>
-                ))}
-              </Cartao>
-
-              <Cartao titulo="Pendências mais antigas">
-                {cockpit.maisAntigas.map((p) => (
-                  <div key={p.id} style={{ fontSize: 12, padding: "4px 0", display: "flex", justifyContent: "space-between", gap: 8 }}>
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.titulo}</span>
-                    <span style={{ color: CORES.textoFraco, fontFamily: "var(--font-mono, monospace)", flexShrink: 0 }}>{p.idadeDias}d</span>
+                </Cartao>
+                <Cartao titulo="Fast-path (30d)">
+                  <div style={{ fontSize: 17, fontWeight: 700, fontFamily: "var(--font-mono, monospace)" }}>{dados.metricasNucleoPCU.pct_fast_path}%</div>
+                </Cartao>
+                <Cartao titulo="Custo cognitivo (30d)">
+                  <div style={{ fontSize: 17, fontWeight: 700, fontFamily: "var(--font-mono, monospace)" }}>{dados.metricasNucleoPCU.custo_total_estimado.toLocaleString("pt-PT")}</div>
+                </Cartao>
+                <Cartao titulo="Cobertura RAG">
+                  <div style={{ fontSize: 17, fontWeight: 700, fontFamily: "var(--font-mono, monospace)" }}>{dados.cobertura.agentesComConteudo}/{dados.cobertura.totalAgentes}</div>
+                </Cartao>
+                <Cartao titulo="Agentes nunca usados">
+                  <div style={{ fontSize: 17, fontWeight: 700, fontFamily: "var(--font-mono, monospace)", color: cockpit.agentesNuncaUsados.length > 0 ? CORES.amarelo : CORES.verde }}>
+                    {cockpit.agentesNuncaUsados.length}
                   </div>
-                ))}
-              </Cartao>
-
-              <Cartao titulo="Custo por agente · Tarefas VM">
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                  <div>
-                    {cockpit.topCustoAgentes.map((c) => (
-                      <div key={c.agente} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "3px 0" }}>
-                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.agente}</span>
-                        <span style={{ fontFamily: "var(--font-mono, monospace)", flexShrink: 0, marginLeft: 6 }}>{c.custo.toLocaleString("pt-PT")}</span>
-                      </div>
-                    ))}
+                </Cartao>
+                <Cartao titulo="Full-cycle s/ justificação">
+                  <div style={{ fontSize: 17, fontWeight: 700, fontFamily: "var(--font-mono, monospace)", color: dados.metricasNucleoPCU.full_cycle_sem_justificativa > 0 ? CORES.vermelho : CORES.verde }}>
+                    {dados.metricasNucleoPCU.full_cycle_sem_justificativa}
                   </div>
-                  <div style={{ borderLeft: `1px solid ${CORES.borda}`, paddingLeft: 16 }}>
-                    {Object.entries(cockpit.codeTasksPorStatus).map(([status, n]) => (
-                      <div key={status} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "3px 0" }}>
-                        <span>{status}</span>
-                        <span style={{ fontFamily: "var(--font-mono, monospace)" }}>{n}</span>
-                      </div>
-                    ))}
-                    {Object.keys(cockpit.codeTasksPorStatus).length === 0 && <div style={{ color: CORES.textoFraco, fontSize: 12 }}>sem tarefas</div>}
-                  </div>
-                </div>
-              </Cartao>
-            </div>
-
-            {/* Feed de atividade recente */}
-            <Cartao titulo={`Atividade recente (últimas ${dados.atividadeRecente.length})`}>
-              <div style={{ maxHeight: 380, overflowY: "auto" }}>
-                {dados.atividadeRecente.map((a) => (
-                  <div key={a.id} style={{ display: "flex", gap: 10, padding: "7px 0", borderTop: `1px solid ${CORES.borda}`, alignItems: "flex-start" }}>
-                    <span style={{ color: a.success ? CORES.verde : CORES.vermelho, fontSize: 14, lineHeight: "20px" }}>{a.success ? "✓" : "✕"}</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13 }}>
-                        <b>{a.agent}</b>{" "}
-                        <span style={{ color: CORES.textoFraco, fontFamily: "var(--font-mono, monospace)", fontSize: 11 }}>
-                          ({a.fast_path ? "fast-path" : "full-cycle"} · {a.origem})
-                        </span>
-                      </div>
-                      <div style={{ fontSize: 12, color: CORES.textoFraco, marginTop: 1 }}>{a.summary}</div>
-                    </div>
-                    <span style={{ fontSize: 11, color: CORES.textoFraco, whiteSpace: "nowrap", fontFamily: "var(--font-mono, monospace)" }}>{tempoRelativo(a.created_at)}</span>
-                  </div>
-                ))}
+                </Cartao>
               </div>
-            </Cartao>
-          </>
-        )}
+
+              {/* Duas filas — empilhadas em mobile, lado a lado a partir de ~820px */}
+              <div className={estilos.filasGrid}>
+                <Cartao titulo={`Precisa de ti agora (${filaIntervencaoFiltrada.length})`}>
+                  <div style={{ maxHeight: 340, overflowY: "auto" }}>
+                    {filaIntervencaoFiltrada.length === 0 ? (
+                      <div style={{ color: CORES.textoFraco, fontSize: 13 }}>Nada nesta área a precisar de ti.</div>
+                    ) : (
+                      filaIntervencaoFiltrada.slice(0, 25).map((p) => <LinhaPendencia key={p.id} p={p} />)
+                    )}
+                  </div>
+                </Cartao>
+                <Cartao titulo={`Pode correr sozinho (${filaAutonomaFiltrada.length})`}>
+                  <div style={{ maxHeight: 340, overflowY: "auto" }}>
+                    {filaAutonomaFiltrada.length === 0 ? (
+                      <div style={{ color: CORES.textoFraco, fontSize: 13 }}>Nada nesta área nesta fila.</div>
+                    ) : (
+                      filaAutonomaFiltrada.slice(0, 25).map((p) => <LinhaPendencia key={p.id} p={p} />)
+                    )}
+                  </div>
+                </Cartao>
+              </div>
+
+              {/* Análises — 1 coluna em mobile, 2 em tablet, 3 em ecrã largo */}
+              <div className={estilos.analisesGrid}>
+                <Cartao titulo="Pendências por prioridade">
+                  {["alta", "media", "baixa"].map((p) => (
+                    <div key={p} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "4px 0" }}>
+                      <Etiqueta cor={COR_PRIORIDADE[p]}>{p}</Etiqueta>
+                      <span style={{ fontFamily: "var(--font-mono, monospace)" }}>{cockpit.porPrioridade[p] || 0}</span>
+                    </div>
+                  ))}
+                </Cartao>
+
+                <Cartao titulo="Pendências mais antigas">
+                  {cockpit.maisAntigas.map((p) => (
+                    <div key={p.id} style={{ fontSize: 12, padding: "4px 0", display: "flex", justifyContent: "space-between", gap: 8 }}>
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.titulo}</span>
+                      <span style={{ color: CORES.textoFraco, fontFamily: "var(--font-mono, monospace)", flexShrink: 0 }}>{p.idadeDias}d</span>
+                    </div>
+                  ))}
+                </Cartao>
+
+                <Cartao titulo="Custo por agente · Tarefas VM">
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                    <div>
+                      {cockpit.topCustoAgentes.map((c) => (
+                        <div key={c.agente} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "3px 0" }}>
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.agente}</span>
+                          <span style={{ fontFamily: "var(--font-mono, monospace)", flexShrink: 0, marginLeft: 6 }}>{c.custo.toLocaleString("pt-PT")}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ borderLeft: `1px solid ${CORES.borda}`, paddingLeft: 16 }}>
+                      {Object.entries(cockpit.codeTasksPorStatus).map(([status, n]) => (
+                        <div key={status} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "3px 0" }}>
+                          <span>{status}</span>
+                          <span style={{ fontFamily: "var(--font-mono, monospace)" }}>{n}</span>
+                        </div>
+                      ))}
+                      {Object.keys(cockpit.codeTasksPorStatus).length === 0 && <div style={{ color: CORES.textoFraco, fontSize: 12 }}>sem tarefas</div>}
+                    </div>
+                  </div>
+                </Cartao>
+              </div>
+
+              {/* Feed de atividade recente */}
+              <Cartao titulo={`Atividade recente (últimas ${dados.atividadeRecente.length})`}>
+                <div style={{ maxHeight: 380, overflowY: "auto" }}>
+                  {dados.atividadeRecente.map((a) => (
+                    <div key={a.id} style={{ display: "flex", gap: 10, padding: "7px 0", borderTop: `1px solid ${CORES.borda}`, alignItems: "flex-start" }}>
+                      <span style={{ color: a.success ? CORES.verde : CORES.vermelho, fontSize: 14, lineHeight: "20px" }}>{a.success ? "✓" : "✕"}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13 }}>
+                          <b>{a.agent}</b>{" "}
+                          <span style={{ color: CORES.textoFraco, fontFamily: "var(--font-mono, monospace)", fontSize: 11 }}>
+                            ({a.fast_path ? "fast-path" : "full-cycle"} · {a.origem})
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 12, color: CORES.textoFraco, marginTop: 1 }}>{a.summary}</div>
+                      </div>
+                      <span style={{ fontSize: 11, color: CORES.textoFraco, whiteSpace: "nowrap", fontFamily: "var(--font-mono, monospace)" }}>{tempoRelativo(a.created_at)}</span>
+                    </div>
+                  ))}
+                </div>
+              </Cartao>
+            </>
+          )}
+        </div>
       </div>
     </main>
   );

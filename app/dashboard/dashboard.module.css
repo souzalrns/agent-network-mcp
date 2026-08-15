@@ -1,0 +1,144 @@
+/* Layout responsivo do cockpit — 2 breakpoints (800/1024), por indicação do
+   agente 'design'. Regra: em mobile tudo fica visível e aberto (sem
+   accordion, sem esconder atrás de cliques) — a faixa de áreas fica
+   fixa (sticky) no topo em vez de sidebar fixa espremendo o conteúdo. */
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+@media (min-width: 800px) {
+  .shell {
+    flex-direction: row;
+  }
+}
+
+.sidebar {
+  padding: 0.85rem 1rem 0.7rem;
+  border-bottom: 1px solid #212637;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: #090b12;
+}
+@media (min-width: 800px) {
+  .sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    min-height: 100vh;
+    border-bottom: none;
+    border-right: 1px solid #212637;
+    padding: 1.25rem 1rem;
+    position: static;
+  }
+}
+
+.areasLista {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+@media (min-width: 800px) {
+  .areasLista {
+    display: block;
+    overflow-x: visible;
+  }
+}
+
+.areaItem {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid #212637;
+  color: #8b93ad;
+  background: transparent;
+  cursor: pointer;
+}
+.areaItem.ativo {
+  color: #e9ecf6;
+  border-color: #22d3ee;
+}
+@media (min-width: 800px) {
+  .areaItem {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    text-align: left;
+    border-radius: 0;
+    border: none;
+    border-left: 2px solid transparent;
+    padding: 5px 8px;
+    font-size: 12.5px;
+    margin-bottom: 1px;
+  }
+  .areaItem.ativo {
+    border-color: transparent;
+    border-left: 2px solid #22d3ee;
+  }
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  padding: 1rem;
+}
+@media (min-width: 640px) {
+  .main {
+    padding: 1.5rem;
+  }
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+@media (min-width: 800px) and (max-width: 1023px) {
+  .kpiGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (min-width: 1024px) {
+  .kpiGrid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+.filasGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+@media (min-width: 800px) {
+  .filasGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.analisesGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+@media (min-width: 800px) and (max-width: 1023px) {
+  .analisesGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (min-width: 1024px) {
+  .analisesGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
