@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { CORES, tempoRelativo } from "../_lib/tema.js";
 
-const RAIO = { agente: 9, capacidade: 4.5, fonte: 4.5 };
+const RAIO = { agente: 10, capacidade: 3.5, fonte: 3.5 };
 const COR_NO = { agente: CORES.agente, capacidade: CORES.capacidade, fonte: CORES.fonte };
 
 export default function GrafoPage() {
@@ -63,12 +63,12 @@ export default function GrafoPage() {
           const ativo24h = n.ultimaAtividade && Date.now() - new Date(n.ultimaAtividade).getTime() < 24 * 60 * 60 * 1000;
           if (n.tipo !== "agente") return;
           const raio = RAIO[n.tipo];
-          const grad = ctx.createRadialGradient(n.x, n.y, raio * 0.5, n.x, n.y, raio * (ativo24h ? 4.5 : 2.5));
-          grad.addColorStop(0, ativo24h ? "rgba(34, 211, 238, 0.35)" : "rgba(34, 211, 238, 0.12)");
+          const grad = ctx.createRadialGradient(n.x, n.y, raio * 0.5, n.x, n.y, raio * (ativo24h ? 3.2 : 1.8));
+          grad.addColorStop(0, ativo24h ? "rgba(34, 211, 238, 0.28)" : "rgba(34, 211, 238, 0.08)");
           grad.addColorStop(1, "rgba(34, 211, 238, 0)");
           ctx.fillStyle = grad;
           ctx.beginPath();
-          ctx.arc(n.x, n.y, raio * (ativo24h ? 4.5 : 2.5), 0, 2 * Math.PI);
+          ctx.arc(n.x, n.y, raio * (ativo24h ? 3.2 : 1.8), 0, 2 * Math.PI);
           ctx.fill();
 
           if (escala > 1.1) {

@@ -10,7 +10,7 @@ export const CORES = {
   borda: "#212637",
   bordaForte: "#323a52",
   texto: "#e9ecf6",
-  textoFraco: "#7c8399",
+  textoFraco: "#8b93ad",
   verde: "#34d399",
   amarelo: "#fbbf24",
   vermelho: "#f87171",

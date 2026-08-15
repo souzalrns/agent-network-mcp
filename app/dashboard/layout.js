@@ -3,7 +3,7 @@
 // dependência de rede externa no build para não arriscar quebrar produção
 // por causa de fonte — o efeito "técnico" vem da mono, não de uma fonte rara.
 const FONT_DISPLAY =
-  '"Space Grotesk", -apple-system, "Segoe UI", Inter, sans-serif';
+  'Inter, -apple-system, "Segoe UI", system-ui, sans-serif';
 const FONT_MONO =
   'ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace';
 
