@@ -337,10 +337,17 @@ export default function DashboardPage() {
 
           <a
             href="/dashboard/grafo"
-            style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: CORES.textoFraco, textDecoration: "none", marginBottom: 14 }}
+            style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: CORES.textoFraco, textDecoration: "none", marginBottom: 8 }}
           >
             <span style={{ width: 6, height: 6, borderRadius: 999, background: CORES.agente, boxShadow: `0 0 6px ${CORES.agente}` }} />
             constelação da rede →
+          </a>
+          <a
+            href="/dashboard/agentes"
+            style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: CORES.textoFraco, textDecoration: "none", marginBottom: 14 }}
+          >
+            <span style={{ width: 6, height: 6, borderRadius: 999, background: CORES.verde, boxShadow: `0 0 6px ${CORES.verde}` }} />
+            todos os agentes →
           </a>
 
           <div style={{ fontSize: 11, color: CORES.textoFraco, textTransform: "uppercase", letterSpacing: 0.6, fontFamily: "var(--font-mono, monospace)", marginBottom: 8 }}>

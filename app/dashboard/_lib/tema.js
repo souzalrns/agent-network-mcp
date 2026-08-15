@@ -12,6 +12,7 @@ export const CORES = {
   texto: "#e9ecf6",
   textoFraco: "#8b93ad",
   verde: "#34d399",
+  laranja: "#fb923c",
   amarelo: "#fbbf24",
   vermelho: "#f87171",
   azul: "#22d3ee",
