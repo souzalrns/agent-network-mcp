@@ -89,6 +89,16 @@ export async function GET(request) {
     codeTasksPorStatus[t.status] = (codeTasksPorStatus[t.status] || 0) + 1;
   }
 
+  // Agentes mais ativos (histórico completo) — dados reais para o radar de agentes
+  const contagemRadar = new Map();
+  for (const l of agentLogTudo || []) {
+    contagemRadar.set(l.agent, (contagemRadar.get(l.agent) || 0) + 1);
+  }
+  const topAgentesAtivos = [...contagemRadar.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([agente, execucoes]) => ({ agente, execucoes }));
+
   return Response.json({
     geradoEm: new Date().toISOString(),
     areas,
@@ -98,6 +108,7 @@ export async function GET(request) {
     porPrioridade,
     agentesNuncaUsados,
     topCustoAgentes,
+    topAgentesAtivos,
     codeTasksPorStatus,
     totalAgentes: (projetos || []).length,
   });

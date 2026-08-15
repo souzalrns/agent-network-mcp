@@ -97,14 +97,35 @@
   }
 }
 
+.heroGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+@media (min-width: 800px) {
+  .heroGrid {
+    grid-template-columns: 1.3fr 1fr;
+  }
+}
+
 .hero {
   position: relative;
   overflow: hidden;
   border-radius: 16px;
-  border: 1px solid #212637;
-  background: linear-gradient(180deg, #11141d 0%, #0d1019 100%);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(17, 20, 29, 0.6);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
   padding: 1.4rem 1.5rem 1rem;
-  margin-bottom: 14px;
+  margin-bottom: 0;
+}
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 15% 0%, rgba(34, 211, 238, 0.1), transparent 60%);
+  pointer-events: none;
 }
 
 .heroLabel {
@@ -148,8 +169,10 @@
 .tickerItem {
   flex: 0 0 auto;
   min-width: 128px;
-  background: #11141d;
-  border: 1px solid #212637;
+  background: rgba(17, 20, 29, 0.6);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 10px;
   padding: 9px 13px;
 }
@@ -171,11 +194,13 @@
 
 .acaoCard {
   display: flex;
-  border: 1px solid #212637;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 10px;
   overflow: hidden;
   margin-bottom: 7px;
-  background: #11141d;
+  background: rgba(17, 20, 29, 0.6);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 .acaoBarra {

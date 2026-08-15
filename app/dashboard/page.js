@@ -8,8 +8,10 @@ function Cartao({ titulo, children, style }) {
   return (
     <div
       style={{
-        background: CORES.cartao,
-        border: `1px solid ${CORES.borda}`,
+        background: "rgba(17, 20, 29, 0.6)",
+        backdropFilter: "blur(14px)",
+        WebkitBackdropFilter: "blur(14px)",
+        border: "1px solid rgba(255, 255, 255, 0.08)",
         borderRadius: 12,
         padding: "0.9rem 1rem",
         minWidth: 0,
@@ -116,6 +118,50 @@ function AcaoCard({ p }) {
             {p.bloqueado_por && <Etiqueta cor={CORES.vermelho}>bloqueada: {p.bloqueado_por}</Etiqueta>}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function RadarAgentes({ agentes }) {
+  const tamanho = 200;
+  const centro = tamanho / 2;
+  const raioMax = 78;
+  const maxExec = Math.max(1, ...agentes.map((a) => a.execucoes));
+
+  if (agentes.length === 0) {
+    return <div style={{ color: CORES.textoFraco, fontSize: 12, height: tamanho, display: "flex", alignItems: "center", justifyContent: "center" }}>sem execuções registadas</div>;
+  }
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+      <svg width={tamanho} height={tamanho} viewBox={`0 0 ${tamanho} ${tamanho}`} style={{ flexShrink: 0 }}>
+        {[0.33, 0.66, 1].map((f) => (
+          <circle key={f} cx={centro} cy={centro} r={raioMax * f} fill="none" stroke={CORES.borda} strokeWidth="1" />
+        ))}
+        <line x1={centro - raioMax} y1={centro} x2={centro + raioMax} y2={centro} stroke={CORES.borda} strokeWidth="1" />
+        <line x1={centro} y1={centro - raioMax} x2={centro} y2={centro + raioMax} stroke={CORES.borda} strokeWidth="1" />
+        {agentes.map((a, i) => {
+          const angulo = (i / agentes.length) * 2 * Math.PI - Math.PI / 2;
+          const dist = 22 + (a.execucoes / maxExec) * (raioMax - 22);
+          const x = centro + dist * Math.cos(angulo);
+          const y = centro + dist * Math.sin(angulo);
+          const raioNo = 3 + (a.execucoes / maxExec) * 6;
+          return (
+            <g key={a.agente}>
+              <circle cx={x} cy={y} r={raioNo + 4} fill={CORES.agente} opacity="0.15" />
+              <circle cx={x} cy={y} r={raioNo} fill={CORES.agente} />
+            </g>
+          );
+        })}
+      </svg>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+        {agentes.slice(0, 6).map((a) => (
+          <div key={a.agente} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12 }}>
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.agente}</span>
+            <span style={{ fontFamily: "var(--font-mono, monospace)", color: CORES.textoFraco, flexShrink: 0 }}>{a.execucoes}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -273,7 +319,16 @@ export default function DashboardPage() {
     : null;
 
   return (
-    <main style={{ background: CORES.fundo, minHeight: "100vh", fontFamily: "var(--font-display, system-ui), sans-serif", color: CORES.texto }}>
+    <main
+      style={{
+        background: `radial-gradient(ellipse 900px 500px at 15% -5%, rgba(34,211,238,0.08), transparent 60%),
+                     radial-gradient(ellipse 700px 500px at 90% 20%, rgba(167,139,250,0.06), transparent 55%),
+                     ${CORES.fundo}`,
+        minHeight: "100vh",
+        fontFamily: "var(--font-display, system-ui), sans-serif",
+        color: CORES.texto,
+      }}
+    >
       <div className={estilos.shell}>
         {/* Áreas: coluna vertical em ecrãs largos, faixa horizontal de chips em mobile — nada fica escondido atrás de um clique extra */}
         <aside className={estilos.sidebar}>
@@ -322,13 +377,21 @@ export default function DashboardPage() {
 
           {dados && cockpit && (
             <>
-              {/* Hero: o número que mais importa agora, com o gráfico real por baixo */}
-              <div className={estilos.hero}>
-                <div className={estilos.heroLabel}>fast-path · últimos 30 dias</div>
-                <div className={estilos.heroNumero}>{dados.metricasNucleoPCU.pct_fast_path}%</div>
-                <div className={estilos.heroSub}>{dados.metricasNucleoPCU.total_execucoes} execuções no período</div>
-                <div style={{ marginTop: 14 }}>
-                  <GraficoHero serie={dados.serieFastPath} />
+              {/* Hero: o número que mais importa, o gráfico real, e o radar dos nossos agentes reais */}
+              <div className={estilos.heroGrid}>
+                <div className={estilos.hero}>
+                  <div className={estilos.heroLabel}>fast-path · últimos 30 dias</div>
+                  <div className={estilos.heroNumero}>{dados.metricasNucleoPCU.pct_fast_path}%</div>
+                  <div className={estilos.heroSub}>{dados.metricasNucleoPCU.total_execucoes} execuções no período</div>
+                  <div style={{ marginTop: 14 }}>
+                    <GraficoHero serie={dados.serieFastPath} />
+                  </div>
+                </div>
+                <div className={estilos.hero}>
+                  <div className={estilos.heroLabel}>rede de agentes · mais ativos</div>
+                  <div style={{ marginTop: 10 }}>
+                    <RadarAgentes agentes={cockpit.topAgentesAtivos} />
+                  </div>
                 </div>
               </div>
 
