@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { sessaoValida } from "./_lib/session.js";
 
 function getClient() {
   return createClient(
@@ -8,8 +9,7 @@ function getClient() {
 }
 
 export async function GET(request) {
-  const secret = request.headers.get("x-dashboard-secret");
-  if (!process.env.INGEST_SECRET || secret !== process.env.INGEST_SECRET) {
+  if (!sessaoValida(request.headers.get("cookie"))) {
     return Response.json({ error: "Não autorizado" }, { status: 401 });
   }
 

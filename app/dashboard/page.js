@@ -46,17 +46,21 @@ function Cartao({ titulo, children, destaque }) {
 }
 
 export default function DashboardPage() {
-  const [secret, setSecret] = useState("");
+  const [password, setPassword] = useState("");
   const [autenticado, setAutenticado] = useState(false);
+  const [erroLogin, setErroLogin] = useState(null);
+  const [aLogar, setALogar] = useState(false);
   const [dados, setDados] = useState(null);
   const [erro, setErro] = useState(null);
   const [ultimaAtualizacao, setUltimaAtualizacao] = useState(null);
 
-  const buscar = useCallback(async (s) => {
+  const buscar = useCallback(async () => {
     try {
-      const res = await fetch("/api/dashboard", {
-        headers: { "x-dashboard-secret": s },
-      });
+      const res = await fetch("/api/dashboard");
+      if (res.status === 401) {
+        setAutenticado(false);
+        return;
+      }
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
         setErro(d.error || `Erro ${res.status}`);
@@ -72,33 +76,71 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
+    fetch("/api/dashboard")
+      .then((res) => {
+        if (res.status === 401) return;
+        setAutenticado(true);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     if (!autenticado) return;
-    buscar(secret);
-    const intervalo = setInterval(() => buscar(secret), 4000);
+    buscar();
+    const intervalo = setInterval(buscar, 4000);
     return () => clearInterval(intervalo);
-  }, [autenticado, secret, buscar]);
+  }, [autenticado, buscar]);
+
+  const entrar = async (e) => {
+    e.preventDefault();
+    setALogar(true);
+    setErroLogin(null);
+    try {
+      const res = await fetch("/api/dashboard/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setErroLogin(d.error || "Falha no login");
+        return;
+      }
+      setPassword("");
+      setAutenticado(true);
+    } catch (e) {
+      setErroLogin(e.message);
+    } finally {
+      setALogar(false);
+    }
+  };
 
   if (!autenticado) {
     return (
       <main style={{ background: CORES.fundo, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui, sans-serif" }}>
         <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            setAutenticado(true);
-          }}
+          onSubmit={entrar}
           style={{ background: CORES.cartao, padding: "2rem", borderRadius: 12, border: `1px solid ${CORES.borda}`, width: 320 }}
         >
           <h1 style={{ color: CORES.texto, fontSize: 18, marginBottom: 16 }}>Dashboard — Rede de Agentes</h1>
           <input
             type="password"
-            placeholder="Chave secreta (INGEST_SECRET)"
-            value={secret}
-            onChange={(e) => setSecret(e.target.value)}
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             required
+            autoFocus
             style={{ width: "100%", padding: "0.6rem", borderRadius: 6, border: `1px solid ${CORES.borda}`, background: "#0f1115", color: CORES.texto, marginBottom: 12 }}
           />
-          <button type="submit" style={{ width: "100%", padding: "0.6rem", borderRadius: 6, border: "none", background: CORES.azul, color: "#0f1115", fontWeight: 600, cursor: "pointer" }}>
-            Entrar
+          {erroLogin && (
+            <div style={{ color: CORES.vermelho, fontSize: 12, marginBottom: 12 }}>⚠ {erroLogin}</div>
+          )}
+          <button
+            type="submit"
+            disabled={aLogar}
+            style={{ width: "100%", padding: "0.6rem", borderRadius: 6, border: "none", background: CORES.azul, color: "#0f1115", fontWeight: 600, cursor: aLogar ? "default" : "pointer", opacity: aLogar ? 0.7 : 1 }}
+          >
+            {aLogar ? "A entrar…" : "Entrar"}
           </button>
         </form>
       </main>
