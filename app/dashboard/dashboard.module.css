@@ -97,33 +97,111 @@
   }
 }
 
-.kpiGrid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  margin-bottom: 12px;
+.hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid #212637;
+  background: linear-gradient(180deg, #11141d 0%, #0d1019 100%);
+  padding: 1.4rem 1.5rem 1rem;
+  margin-bottom: 14px;
 }
-@media (min-width: 800px) and (max-width: 1023px) {
-  .kpiGrid {
-    grid-template-columns: repeat(3, 1fr);
-  }
+
+.heroLabel {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8b93ad;
 }
-@media (min-width: 1024px) {
-  .kpiGrid {
-    grid-template-columns: repeat(6, 1fr);
+
+.heroNumero {
+  font-size: 52px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: #ffffff;
+  text-shadow: 0 0 28px rgba(34, 211, 238, 0.35);
+  margin: 6px 0 2px;
+}
+@media (min-width: 640px) {
+  .heroNumero {
+    font-size: 68px;
   }
 }
 
-.graficosGrid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-  margin-bottom: 12px;
+.heroSub {
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  color: #8b93ad;
 }
-@media (min-width: 800px) {
-  .graficosGrid {
-    grid-template-columns: 1.4fr 1fr;
-  }
+
+.ticker {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin-bottom: 14px;
+  padding-bottom: 2px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tickerItem {
+  flex: 0 0 auto;
+  min-width: 128px;
+  background: #11141d;
+  border: 1px solid #212637;
+  border-radius: 10px;
+  padding: 9px 13px;
+}
+
+.tickerLabel {
+  font-family: var(--font-mono, monospace);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #8b93ad;
+}
+
+.tickerValor {
+  font-family: var(--font-mono, monospace);
+  font-size: 20px;
+  font-weight: 800;
+  margin-top: 2px;
+}
+
+.acaoCard {
+  display: flex;
+  border: 1px solid #212637;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 7px;
+  background: #11141d;
+}
+
+.acaoBarra {
+  width: 4px;
+  flex-shrink: 0;
+}
+
+.acaoCorpo {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.acaoTitulo {
+  font-size: 14px;
+  font-weight: 700;
+  color: #e9ecf6;
+}
+
+.acaoMeta {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: #8b93ad;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .filasGrid {

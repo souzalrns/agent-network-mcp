@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { CORES, tempoRelativo } from "./_lib/tema.js";
 import estilos from "./dashboard.module.css";
 
@@ -47,52 +47,75 @@ function Etiqueta({ cor, children }) {
   );
 }
 
-function LinhaPendencia({ p }) {
-  const idadeDias = Math.floor((Date.now() - new Date(p.created_at).getTime()) / 86400000);
+function GraficoHero({ serie }) {
+  const ref = useRef(null);
+  const [comprimento, setComprimento] = useState(0);
+  const [revelado, setRevelado] = useState(false);
+
+  const largura = 400;
+  const altura = 130;
+  const pontosValidos = serie.map((p, i) => ({ ...p, x: (i / (serie.length - 1)) * largura })).filter((p) => p.pct !== null);
+  const maxPct = Math.max(10, ...pontosValidos.map((p) => p.pct));
+  const y = (pct) => altura - (pct / maxPct) * (altura - 8) - 4;
+  const linha = pontosValidos.map((p) => `${p.x},${y(p.pct)}`).join(" ");
+  const area = pontosValidos.length >= 2 ? `${pontosValidos[0].x},${altura} ${linha} ${pontosValidos[pontosValidos.length - 1].x},${altura}` : "";
+
+  useEffect(() => {
+    if (ref.current && pontosValidos.length >= 2) {
+      const l = ref.current.getTotalLength();
+      setComprimento(l);
+      setRevelado(false);
+      requestAnimationFrame(() => requestAnimationFrame(() => setRevelado(true)));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serie.length, pontosValidos.length]);
+
+  if (pontosValidos.length < 2) {
+    return <div style={{ color: CORES.textoFraco, fontSize: 12, height: 100, display: "flex", alignItems: "center" }}>ainda sem dados suficientes nos últimos 14 dias</div>;
+  }
+
   return (
-    <div style={{ borderTop: `1px solid ${CORES.borda}`, padding: "9px 0" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
-        <div style={{ fontSize: 13 }}>{p.titulo}</div>
-        <span style={{ fontSize: 11, color: CORES.textoFraco, fontFamily: "var(--font-mono, monospace)", whiteSpace: "nowrap" }}>
-          {idadeDias}d
-        </span>
-      </div>
-      <div style={{ display: "flex", gap: 6, marginTop: 5, flexWrap: "wrap" }}>
-        <Etiqueta cor={COR_PRIORIDADE[p.prioridade] || CORES.textoFraco}>{p.prioridade}</Etiqueta>
-        <Etiqueta cor={CORES.textoFraco}>{p.area_label}</Etiqueta>
-        {p.tipo && <Etiqueta cor={COR_TIPO[p.tipo] || CORES.azul}>{p.tipo.replace("_", " ")}</Etiqueta>}
-        {p.bloqueado_por && <Etiqueta cor={CORES.vermelho}>bloqueada: {p.bloqueado_por}</Etiqueta>}
-      </div>
-    </div>
+    <svg viewBox={`0 0 ${largura} ${altura}`} width="100%" height="130" preserveAspectRatio="none" style={{ display: "block" }}>
+      <polygon points={area} fill={CORES.agente} opacity="0.12" />
+      <polyline
+        ref={ref}
+        points={linha}
+        fill="none"
+        stroke={CORES.agente}
+        strokeWidth="2"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        vectorEffect="non-scaling-stroke"
+        style={{
+          strokeDasharray: comprimento || undefined,
+          strokeDashoffset: revelado ? 0 : comprimento,
+          transition: "stroke-dashoffset 1.2s cubic-bezier(0.16,1,0.3,1)",
+        }}
+      />
+    </svg>
   );
 }
 
-function GraficoArea({ serie }) {
-  const largura = 100;
-  const altura = 36;
-  const pontosValidos = serie.map((p, i) => ({ ...p, x: (i / (serie.length - 1)) * largura })).filter((p) => p.pct !== null);
-
-  if (pontosValidos.length < 2) {
-    return <div style={{ color: CORES.textoFraco, fontSize: 12, height: 90, display: "flex", alignItems: "center" }}>ainda sem dados suficientes nos últimos 14 dias</div>;
-  }
-
-  const maxPct = Math.max(10, ...pontosValidos.map((p) => p.pct));
-  const y = (pct) => altura - (pct / maxPct) * altura;
-  const linha = pontosValidos.map((p) => `${p.x},${y(p.pct)}`).join(" ");
-  const area = `0,${altura} ${linha} ${largura},${altura}`;
-
+function AcaoCard({ p }) {
+  const [aberto, setAberto] = useState(false);
+  const idadeDias = Math.floor((Date.now() - new Date(p.created_at).getTime()) / 86400000);
+  const cor = COR_PRIORIDADE[p.prioridade] || CORES.textoFraco;
   return (
-    <div>
-      <svg viewBox={`0 0 ${largura} ${altura}`} width="100%" height="90" preserveAspectRatio="none">
-        <polygon points={area} fill={CORES.capacidade} opacity="0.18" />
-        <polyline points={linha} fill="none" stroke={CORES.capacidade} strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
-        {pontosValidos.map((p, i) => (
-          <circle key={i} cx={p.x} cy={y(p.pct)} r="1.4" fill={CORES.capacidade} vectorEffect="non-scaling-stroke" />
-        ))}
-      </svg>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: CORES.textoFraco, fontFamily: "var(--font-mono, monospace)", marginTop: 4 }}>
-        <span>{serie[0].dia.slice(5)}</span>
-        <span>{serie[serie.length - 1].dia.slice(5)}</span>
+    <div className={estilos.acaoCard}>
+      <div className={estilos.acaoBarra} style={{ background: cor }} />
+      <div className={estilos.acaoCorpo} onClick={() => setAberto((a) => !a)}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
+          <span className={estilos.acaoTitulo}>{p.titulo}</span>
+          <span className={estilos.acaoMeta}>{idadeDias}d</span>
+        </div>
+        {aberto && (
+          <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+            <Etiqueta cor={cor}>{p.prioridade}</Etiqueta>
+            <Etiqueta cor={CORES.textoFraco}>{p.area_label}</Etiqueta>
+            {p.tipo && <Etiqueta cor={COR_TIPO[p.tipo] || CORES.azul}>{p.tipo.replace("_", " ")}</Etiqueta>}
+            {p.bloqueado_por && <Etiqueta cor={CORES.vermelho}>bloqueada: {p.bloqueado_por}</Etiqueta>}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -299,42 +322,44 @@ export default function DashboardPage() {
 
           {dados && cockpit && (
             <>
-              {/* KPIs — 2 colunas em telemóvel, 3 em tablet, 6 em ecrã largo */}
-              <div className={estilos.kpiGrid}>
-                <Cartao titulo="Estado da VM">
-                  <div style={{ fontSize: 17, fontWeight: 700, color: vmViva ? CORES.verde : CORES.vermelho }}>
-                    {vmViva === null ? "—" : vmViva ? "● Ativa" : "○ Sem sinal"}
-                  </div>
-                </Cartao>
-                <Cartao titulo="Fast-path (30d)">
-                  <div style={{ fontSize: 17, fontWeight: 700, fontFamily: "var(--font-mono, monospace)" }}>{dados.metricasNucleoPCU.pct_fast_path}%</div>
-                </Cartao>
-                <Cartao titulo="Custo cognitivo (30d)">
-                  <div style={{ fontSize: 17, fontWeight: 700, fontFamily: "var(--font-mono, monospace)" }}>{dados.metricasNucleoPCU.custo_total_estimado.toLocaleString("pt-PT")}</div>
-                </Cartao>
-                <Cartao titulo="Cobertura RAG">
-                  <div style={{ fontSize: 17, fontWeight: 700, fontFamily: "var(--font-mono, monospace)" }}>{dados.cobertura.agentesComConteudo}/{dados.cobertura.totalAgentes}</div>
-                </Cartao>
-                <Cartao titulo="Agentes nunca usados">
-                  <div style={{ fontSize: 17, fontWeight: 700, fontFamily: "var(--font-mono, monospace)", color: cockpit.agentesNuncaUsados.length > 0 ? CORES.amarelo : CORES.verde }}>
-                    {cockpit.agentesNuncaUsados.length}
-                  </div>
-                </Cartao>
-                <Cartao titulo="Full-cycle s/ justificação">
-                  <div style={{ fontSize: 17, fontWeight: 700, fontFamily: "var(--font-mono, monospace)", color: dados.metricasNucleoPCU.full_cycle_sem_justificativa > 0 ? CORES.vermelho : CORES.verde }}>
-                    {dados.metricasNucleoPCU.full_cycle_sem_justificativa}
-                  </div>
-                </Cartao>
+              {/* Hero: o número que mais importa agora, com o gráfico real por baixo */}
+              <div className={estilos.hero}>
+                <div className={estilos.heroLabel}>fast-path · últimos 30 dias</div>
+                <div className={estilos.heroNumero}>{dados.metricasNucleoPCU.pct_fast_path}%</div>
+                <div className={estilos.heroSub}>{dados.metricasNucleoPCU.total_execucoes} execuções no período</div>
+                <div style={{ marginTop: 14 }}>
+                  <GraficoHero serie={dados.serieFastPath} />
+                </div>
               </div>
 
-              {/* Gráficos — tendência real (não decorativa) e cobertura em donut */}
-              <div className={estilos.graficosGrid}>
-                <Cartao titulo="Evolução fast-path (14d)">
-                  <GraficoArea serie={dados.serieFastPath} />
-                </Cartao>
-                <Cartao titulo="Cobertura RAG">
+              {/* Ticker: métricas secundárias, escaneáveis num relance */}
+              <div className={estilos.ticker}>
+                <div className={estilos.tickerItem}>
+                  <div className={estilos.tickerLabel}>estado da vm</div>
+                  <div className={estilos.tickerValor} style={{ color: vmViva ? CORES.verde : CORES.vermelho }}>
+                    {vmViva === null ? "—" : vmViva ? "● ativa" : "○ sem sinal"}
+                  </div>
+                </div>
+                <div className={estilos.tickerItem}>
+                  <div className={estilos.tickerLabel}>custo cognitivo (30d)</div>
+                  <div className={estilos.tickerValor}>{dados.metricasNucleoPCU.custo_total_estimado.toLocaleString("pt-PT")}</div>
+                </div>
+                <div className={estilos.tickerItem}>
+                  <div className={estilos.tickerLabel}>agentes nunca usados</div>
+                  <div className={estilos.tickerValor} style={{ color: cockpit.agentesNuncaUsados.length > 0 ? CORES.amarelo : CORES.verde }}>
+                    {cockpit.agentesNuncaUsados.length}
+                  </div>
+                </div>
+                <div className={estilos.tickerItem}>
+                  <div className={estilos.tickerLabel}>full-cycle s/ justificação</div>
+                  <div className={estilos.tickerValor} style={{ color: dados.metricasNucleoPCU.full_cycle_sem_justificativa > 0 ? CORES.vermelho : CORES.verde }}>
+                    {dados.metricasNucleoPCU.full_cycle_sem_justificativa}
+                  </div>
+                </div>
+                <div className={estilos.tickerItem}>
+                  <div className={estilos.tickerLabel}>cobertura rag</div>
                   <DonutCobertura coberto={dados.cobertura.agentesComConteudo} total={dados.cobertura.totalAgentes} />
-                </Cartao>
+                </div>
               </div>
 
               {/* Duas filas — empilhadas em mobile, lado a lado a partir de ~820px */}
@@ -344,7 +369,7 @@ export default function DashboardPage() {
                     {filaIntervencaoFiltrada.length === 0 ? (
                       <div style={{ color: CORES.textoFraco, fontSize: 13 }}>Nada nesta área a precisar de ti.</div>
                     ) : (
-                      filaIntervencaoFiltrada.slice(0, 25).map((p) => <LinhaPendencia key={p.id} p={p} />)
+                      filaIntervencaoFiltrada.slice(0, 25).map((p) => <AcaoCard key={p.id} p={p} />)
                     )}
                   </div>
                 </Cartao>
@@ -353,7 +378,7 @@ export default function DashboardPage() {
                     {filaAutonomaFiltrada.length === 0 ? (
                       <div style={{ color: CORES.textoFraco, fontSize: 13 }}>Nada nesta área nesta fila.</div>
                     ) : (
-                      filaAutonomaFiltrada.slice(0, 25).map((p) => <LinhaPendencia key={p.id} p={p} />)
+                      filaAutonomaFiltrada.slice(0, 25).map((p) => <AcaoCard key={p.id} p={p} />)
                     )}
                   </div>
                 </Cartao>
