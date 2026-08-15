@@ -229,6 +229,15 @@
   flex-shrink: 0;
 }
 
+@keyframes pulsar {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50% { opacity: 0.9; transform: scale(1); }
+}
+
+.pontoPulsando {
+  animation: pulsar 1s ease-in-out infinite;
+}
+
 .filasGrid {
   display: grid;
   grid-template-columns: 1fr;

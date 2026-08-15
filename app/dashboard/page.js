@@ -98,17 +98,75 @@ function GraficoHero({ serie }) {
   );
 }
 
-function AcaoCard({ p }) {
+function QuadradoAprovar({ aprovando, aprovado, onClick }) {
+  const [hover, setHover] = useState(false);
+  const corBorda = aprovado ? CORES.verde : hover && !aprovando ? CORES.verde : CORES.bordaForte;
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      disabled={aprovando || aprovado}
+      title={aprovado ? "Aprovado" : "Aprovar"}
+      style={{
+        width: 24,
+        height: 24,
+        flexShrink: 0,
+        borderRadius: 6,
+        border: `1.5px solid ${corBorda}`,
+        background: aprovado ? CORES.verde : "transparent",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: aprovando || aprovado ? "default" : "pointer",
+        transition: "all 0.2s ease",
+      }}
+    >
+      {aprovado ? (
+        <span style={{ color: "#06131a", fontSize: 13, fontWeight: 900, lineHeight: 1 }}>✓</span>
+      ) : aprovando ? (
+        <span className={estilos.pontoPulsando} style={{ width: 8, height: 8, borderRadius: 999, background: CORES.textoFraco }} />
+      ) : null}
+    </button>
+  );
+}
+
+function AcaoCard({ p, onAprovado }) {
   const [aberto, setAberto] = useState(false);
+  const [aprovando, setAprovando] = useState(false);
+  const [aprovado, setAprovado] = useState(false);
   const idadeDias = Math.floor((Date.now() - new Date(p.created_at).getTime()) / 86400000);
   const cor = COR_PRIORIDADE[p.prioridade] || CORES.textoFraco;
+
+  const aprovar = async () => {
+    setAprovando(true);
+    try {
+      const res = await fetch("/api/dashboard/pendencias", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: p.id }),
+      });
+      if (!res.ok) throw new Error("falhou");
+      setAprovado(true);
+      setTimeout(() => onAprovado?.(p.id), 500);
+    } catch {
+      setAprovando(false);
+    }
+  };
+
   return (
     <div className={estilos.acaoCard}>
       <div className={estilos.acaoBarra} style={{ background: cor }} />
       <div className={estilos.acaoCorpo} onClick={() => setAberto((a) => !a)}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
           <span className={estilos.acaoTitulo}>{p.titulo}</span>
-          <span className={estilos.acaoMeta}>{idadeDias}d</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+            <span className={estilos.acaoMeta}>{idadeDias}d</span>
+            {p.tipo === "autorizacao" && <QuadradoAprovar aprovando={aprovando} aprovado={aprovado} onClick={aprovar} />}
+          </div>
         </div>
         {aberto && (
           <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
@@ -284,6 +342,18 @@ export default function DashboardPage() {
     return areaSelecionada ? cockpit.filaAutonoma.filter((p) => p.area_slug === areaSelecionada) : cockpit.filaAutonoma;
   }, [cockpit, areaSelecionada]);
 
+  const removerPendenciaAprovada = useCallback((id) => {
+    setCockpit((c) =>
+      c
+        ? {
+            ...c,
+            filaIntervencao: c.filaIntervencao.filter((p) => p.id !== id),
+            filaAutonoma: c.filaAutonoma.filter((p) => p.id !== id),
+          }
+        : c
+    );
+  }, []);
+
   if (!autenticado) {
     return (
       <main style={{ background: CORES.fundo, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-display, system-ui), sans-serif", padding: "1rem" }}>
@@ -439,7 +509,7 @@ export default function DashboardPage() {
                     {filaIntervencaoFiltrada.length === 0 ? (
                       <div style={{ color: CORES.textoFraco, fontSize: 13 }}>Nada nesta área a precisar de ti.</div>
                     ) : (
-                      filaIntervencaoFiltrada.slice(0, 25).map((p) => <AcaoCard key={p.id} p={p} />)
+                      filaIntervencaoFiltrada.slice(0, 25).map((p) => <AcaoCard key={p.id} p={p} onAprovado={removerPendenciaAprovada} />)
                     )}
                   </div>
                 </Cartao>
@@ -448,7 +518,7 @@ export default function DashboardPage() {
                     {filaAutonomaFiltrada.length === 0 ? (
                       <div style={{ color: CORES.textoFraco, fontSize: 13 }}>Nada nesta área nesta fila.</div>
                     ) : (
-                      filaAutonomaFiltrada.slice(0, 25).map((p) => <AcaoCard key={p.id} p={p} />)
+                      filaAutonomaFiltrada.slice(0, 25).map((p) => <AcaoCard key={p.id} p={p} onAprovado={removerPendenciaAprovada} />)
                     )}
                   </div>
                 </Cartao>
