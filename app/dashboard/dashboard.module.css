@@ -114,6 +114,18 @@
   }
 }
 
+.graficosGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+@media (min-width: 800px) {
+  .graficosGrid {
+    grid-template-columns: 1.4fr 1fr;
+  }
+}
+
 .filasGrid {
   display: grid;
   grid-template-columns: 1fr;

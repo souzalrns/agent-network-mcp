@@ -67,6 +67,67 @@ function LinhaPendencia({ p }) {
   );
 }
 
+function GraficoArea({ serie }) {
+  const largura = 100;
+  const altura = 36;
+  const pontosValidos = serie.map((p, i) => ({ ...p, x: (i / (serie.length - 1)) * largura })).filter((p) => p.pct !== null);
+
+  if (pontosValidos.length < 2) {
+    return <div style={{ color: CORES.textoFraco, fontSize: 12, height: 90, display: "flex", alignItems: "center" }}>ainda sem dados suficientes nos últimos 14 dias</div>;
+  }
+
+  const maxPct = Math.max(10, ...pontosValidos.map((p) => p.pct));
+  const y = (pct) => altura - (pct / maxPct) * altura;
+  const linha = pontosValidos.map((p) => `${p.x},${y(p.pct)}`).join(" ");
+  const area = `0,${altura} ${linha} ${largura},${altura}`;
+
+  return (
+    <div>
+      <svg viewBox={`0 0 ${largura} ${altura}`} width="100%" height="90" preserveAspectRatio="none">
+        <polygon points={area} fill={CORES.capacidade} opacity="0.18" />
+        <polyline points={linha} fill="none" stroke={CORES.capacidade} strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
+        {pontosValidos.map((p, i) => (
+          <circle key={i} cx={p.x} cy={y(p.pct)} r="1.4" fill={CORES.capacidade} vectorEffect="non-scaling-stroke" />
+        ))}
+      </svg>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: CORES.textoFraco, fontFamily: "var(--font-mono, monospace)", marginTop: 4 }}>
+        <span>{serie[0].dia.slice(5)}</span>
+        <span>{serie[serie.length - 1].dia.slice(5)}</span>
+      </div>
+    </div>
+  );
+}
+
+function DonutCobertura({ coberto, total }) {
+  const pct = total > 0 ? Math.round((coberto / total) * 100) : 0;
+  const raio = 34;
+  const circ = 2 * Math.PI * raio;
+  const preenchido = (pct / 100) * circ;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+      <svg width="84" height="84" viewBox="0 0 84 84">
+        <circle cx="42" cy="42" r={raio} fill="none" stroke={CORES.borda} strokeWidth="8" />
+        <circle
+          cx="42" cy="42" r={raio} fill="none" stroke={CORES.agente} strokeWidth="8"
+          strokeDasharray={`${preenchido} ${circ}`} strokeLinecap="round"
+          transform="rotate(-90 42 42)"
+        />
+        <text x="42" y="46" textAnchor="middle" fontSize="17" fontWeight="700" fill={CORES.texto} fontFamily="var(--font-mono, monospace)">{pct}%</text>
+      </svg>
+      <div style={{ fontSize: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+          <span style={{ width: 7, height: 7, borderRadius: 999, background: CORES.agente, display: "inline-block" }} />
+          coberto <span style={{ fontFamily: "var(--font-mono, monospace)", color: CORES.textoFraco }}>{coberto}</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ width: 7, height: 7, borderRadius: 999, background: CORES.borda, display: "inline-block" }} />
+          falta <span style={{ fontFamily: "var(--font-mono, monospace)", color: CORES.textoFraco }}>{total - coberto}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const [password, setPassword] = useState("");
   const [autenticado, setAutenticado] = useState(false);
@@ -263,6 +324,16 @@ export default function DashboardPage() {
                   <div style={{ fontSize: 17, fontWeight: 700, fontFamily: "var(--font-mono, monospace)", color: dados.metricasNucleoPCU.full_cycle_sem_justificativa > 0 ? CORES.vermelho : CORES.verde }}>
                     {dados.metricasNucleoPCU.full_cycle_sem_justificativa}
                   </div>
+                </Cartao>
+              </div>
+
+              {/* Gráficos — tendência real (não decorativa) e cobertura em donut */}
+              <div className={estilos.graficosGrid}>
+                <Cartao titulo="Evolução fast-path (14d)">
+                  <GraficoArea serie={dados.serieFastPath} />
+                </Cartao>
+                <Cartao titulo="Cobertura RAG">
+                  <DonutCobertura coberto={dados.cobertura.agentesComConteudo} total={dados.cobertura.totalAgentes} />
                 </Cartao>
               </div>
 

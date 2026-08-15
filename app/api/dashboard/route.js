@@ -62,6 +62,33 @@ export async function GET(request) {
     };
   }
 
+  // 3b. Série diária de fast-path (14 dias) para o gráfico de tendência —
+  // dias sem execuções ficam com pct=null (não inventamos um 0% falso)
+  const desde14 = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+  const { data: logSerie } = await supabase
+    .from("agent_log")
+    .select("fast_path, created_at")
+    .gte("created_at", desde14.toISOString());
+
+  const porDia = new Map();
+  for (const l of logSerie || []) {
+    const dia = l.created_at.slice(0, 10);
+    const atual = porDia.get(dia) || { execucoes: 0, fastPath: 0 };
+    atual.execucoes += 1;
+    if (l.fast_path) atual.fastPath += 1;
+    porDia.set(dia, atual);
+  }
+  const serieFastPath = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+    const chave = d.toISOString().slice(0, 10);
+    const info = porDia.get(chave);
+    serieFastPath.push({
+      dia: chave,
+      pct: info ? Math.round((info.fastPath / info.execucoes) * 100) : null,
+    });
+  }
+
   // 4. Cobertura de conhecimento por agente
   const { data: projetos } = await supabase.from("projects").select("id");
   const { data: chunks } = await supabase.from("knowledge_chunks").select("agent_id");
@@ -91,6 +118,7 @@ export async function GET(request) {
     tarefasAtivas: tarefasAtivas || [],
     atividadeRecente: atividadeRecente || [],
     metricasNucleoPCU: metrica,
+    serieFastPath,
     cobertura: {
       totalAgentes,
       agentesComConteudo,
