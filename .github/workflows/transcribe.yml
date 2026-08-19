@@ -19,6 +19,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - name: Cache de pacotes pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: transcribe-pip-${{ runner.os }}-v1
+
+      - name: Cache de pacotes apt (ffmpeg)
+        uses: actions/cache@v4
+        id: apt-cache
+        with:
+          path: /var/cache/apt/archives
+          key: transcribe-apt-${{ runner.os }}-v1
+
       - name: Instalar dependências
         run: |
           sudo apt-get update -qq
