@@ -3,7 +3,7 @@
 > Última atualização: 19/08/2026.
 > Este ficheiro é o índice **deste repositório** (camada privada / produção LRNSdigital).
 > Visão geral do ecossistema: Supabase `system_inventory` + `pendencias_negocio`,
-> e o espelho Git em `network-agents-setup` → `docs/STATUS-ECOSSISTEMA.md`.
+> e o espelho Git em `network-agents-setup` → `docs/STATUS-ECOSSISTEMA.md` / `STATUS-PROJETOS.md`.
 
 ## Identidade
 
@@ -18,8 +18,7 @@
 ## O que é este repo
 
 Instância de produção da rede de agentes LRNSdigital. Expõe ferramentas MCP
-(`ask_agent_network`, `run_specific_agent`, ingestão, etc.) com agentes de projeto
-que têm **systemPrompt + contexto real de negócio** (não templates vazios).
+com agentes de projeto que têm **systemPrompt + contexto real de negócio**.
 
 ## Estado real
 
@@ -29,14 +28,14 @@ que têm **systemPrompt + contexto real de negócio** (não templates vazios).
 | Agentes em `lib/agents.js` | Operacionais (30+) |
 | Memória Supabase + pgvector | Em produção |
 | Router LLM (Gemini Flash Lite) | Em produção |
-| Dashboard / grafo | Implementado |
-| GitHub Actions (heartbeat, ingest, scrape) | Ativos |
+| Dashboard / grafo UI | Implementado |
+| Graphify (código) | Instalado; `graphify-out/` **gitignored**; update local |
+| GitHub Actions (heartbeat, etc.) | **Desligado / não integrado** — premissa custo zero |
 
 ## O que NÃO está aqui
 
-- Motor genérico / demo pública de portfólio → `network-agents-setup`
-- Código dos produtos (API MesaFlow, site ViannaLegal) → repos respectivos
-- Conteúdo jurídico demo curado sem dados privados → seeds do PCU
+- Motor genérico / demo pública → `network-agents-setup`
+- Código dos produtos → repos respectivos
 
 ## Documentação automática
 
@@ -44,18 +43,16 @@ que têm **systemPrompt + contexto real de negócio** (não templates vazios).
 node scripts/document-agents.js
 ```
 
-Gera `docs/generated/AGENTS.md` a partir de `lib/agents.js` (ids + descriptions).
-Não editar `docs/generated/` à mão.
-
-## Como uma sessão futura deve retomar
+## Como retomar
 
 1. Ler este `docs/STATUS.md`
-2. Correr `node scripts/document-agents.js` se precisar da lista atual de agentes
-3. Consultar Supabase `system_inventory` / `pendencias_negocio`
-4. Para arquitetura genérica / PCU, ver `network-agents-setup`
+2. Graphify local se existir grafo
+3. Supabase `system_inventory` / `pendencias_negocio`
+4. PCU → `network-agents-setup`
 
 ## Changelog curto
 
 | Data | Nota |
 |------|------|
-| 19/08/2026 | STATUS inicial + script document-agents |
+| 19/08/2026 | STATUS inicial + document-agents |
+| 19/08/2026 | Graphify local; Actions desligados documentados |
