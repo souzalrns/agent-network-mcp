@@ -118,6 +118,8 @@ Isso resolve a contradição da v1.0 sem prometer "zero infraestrutura" onde nã
 
 **Objetivo:** ter retrato exato do estado atual e — diferente da v1.0 — uma prova de que dá para voltar atrás, não só um dump.
 
+**Ambiente de isolamento (correção de custo, 21/08/2026):** Supabase Database Branching é recurso pago (exige plano Pro, US$25/mês, mais ~US$0,01344/hora por branch ativa — não é gratuito, confirmado por pesquisa). A alternativa gratuita adotada: **criar um segundo projeto Supabase** (o free tier permite até 2 projetos ativos por organização), replicar schema e uma cópia dos dados de produção nele, e rodar as Fases 0–4 inteiramente nesse projeto isolado antes de qualquer mudança tocar o projeto real (`mpsuurqilnhsvbnjmrpm`). Custo zero, isolamento equivalente ao branching pago para o volume de dados deste projeto (bem abaixo dos 500MB do free tier). Branch de **código** (git) continua sendo usada normalmente — essa é gratuita e sem ressalva.
+
 1. Exportar o enum Zod atual para `docs/snapshot-pre-refactor/agents-enum.ts`, com data.
 2. Dump de schema + contagem de `projects`, `capabilities`, `transcripts` para `docs/snapshot-pre-refactor/supabase-state.md`.
 3. Tag git `pre-refactor-v0` no commit atual.
