@@ -1,0 +1,117 @@
+name: Revisão visual (Playwright + diff)
+
+on:
+  workflow_dispatch:
+    inputs:
+      project:
+        description: "Nome do projeto (ex: vianna-gestao, viannalegal-site)"
+        required: true
+        type: string
+      url:
+        description: "URL a capturar (ex: https://vianna-gestao.vercel.app)"
+        required: true
+        type: string
+
+jobs:
+  visual-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Instalar dependências
+        run: |
+          pip install -q playwright requests pillow numpy
+          playwright install --with-deps chromium
+
+      - name: Capturar screenshot e comparar com baseline
+        env:
+          PROJECT: ${{ inputs.project }}
+          TARGET_URL: ${{ inputs.url }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python3 << 'PYEOF'
+          import os, json, requests, io
+          from datetime import datetime, timezone
+          from playwright.sync_api import sync_playwright
+          from PIL import Image
+          import numpy as np
+
+          project = os.environ["PROJECT"]
+          url = os.environ["TARGET_URL"]
+          supabase_url = os.environ["SUPABASE_URL"].rstrip("/")
+          key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+          headers = {"apikey": key, "Authorization": f"Bearer {key}"}
+
+          ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+          shot_name = f"{project}-{ts}.png"
+          baseline_name = f"{project}-baseline.png"
+          bucket_path = "visual-review"
+
+          # 1. Captura screenshot atual
+          with sync_playwright() as p:
+              browser = p.chromium.launch()
+              page = browser.new_page(viewport={"width": 1440, "height": 900})
+              page.goto(url, wait_until="domcontentloaded", timeout=30000)
+              page.wait_for_timeout(3000)
+              page.screenshot(path="current.png", full_page=True)
+              browser.close()
+
+          # 2. Sobe screenshot atual (histórico)
+          with open("current.png", "rb") as f:
+              current_bytes = f.read()
+          requests.post(
+              f"{supabase_url}/storage/v1/object/post-images/{bucket_path}/{shot_name}",
+              headers={**headers, "Content-Type": "image/png", "x-upsert": "true"},
+              data=current_bytes, timeout=60,
+          )
+          screenshot_url = f"{supabase_url}/storage/v1/object/public/post-images/{bucket_path}/{shot_name}"
+
+          # 3. Tenta baixar baseline existente
+          baseline_url_public = f"{supabase_url}/storage/v1/object/public/post-images/{bucket_path}/{baseline_name}"
+          diff_percent = None
+          notas = ""
+          baseline_resp = requests.get(baseline_url_public, timeout=30)
+
+          if baseline_resp.status_code == 200 and baseline_resp.content:
+              try:
+                  img_baseline = Image.open(io.BytesIO(baseline_resp.content)).convert("RGB")
+                  img_current = Image.open("current.png").convert("RGB")
+                  # redimensiona para o menor tamanho comum para comparar
+                  w = min(img_baseline.width, img_current.width)
+                  h = min(img_baseline.height, img_current.height)
+                  a = np.array(img_baseline.resize((w, h))).astype(int)
+                  b = np.array(img_current.resize((w, h))).astype(int)
+                  diff = np.abs(a - b)
+                  changed_pixels = np.any(diff > 25, axis=-1).sum()
+                  total_pixels = w * h
+                  diff_percent = round(100 * changed_pixels / total_pixels, 2)
+                  notas = f"Comparado com baseline existente ({w}x{h})."
+              except Exception as e:
+                  notas = f"Falha ao comparar com baseline: {e}"
+          else:
+              notas = "Sem baseline anterior — este screenshot vira o novo baseline."
+
+          # 4. Atualiza baseline sempre para o mais recente
+          requests.post(
+              f"{supabase_url}/storage/v1/object/post-images/{bucket_path}/{baseline_name}",
+              headers={**headers, "Content-Type": "image/png", "x-upsert": "true"},
+              data=current_bytes, timeout=60,
+          )
+
+          # 5. Grava registro em visual_reviews
+          row = {
+              "project": project,
+              "url": url,
+              "screenshot_url": screenshot_url,
+              "baseline_url": baseline_url_public,
+              "diff_percent": diff_percent,
+              "reviewed": False,
+              "notas": notas,
+          }
+          requests.post(
+              f"{supabase_url}/rest/v1/visual_reviews",
+              headers={**headers, "Content-Type": "application/json", "Prefer": "return=minimal"},
+              data=json.dumps(row), timeout=30,
+          )
+          print(json.dumps(row, ensure_ascii=False, indent=2))
+          PYEOF
