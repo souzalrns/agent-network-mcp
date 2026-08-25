@@ -48,6 +48,14 @@ Após adicionar/renomear agentes em `lib/agents.js`, regenerar o catálogo.
 - Não reativar workflows GitHub Actions que consumam minutos em repos privados sem decisão explícita.
 - Alterações ao router e tools MCP: verificar impacto no Claude.ai connector.
 
+## Skills de engenharia (addyosmani/agent-skills, espelhado localmente)
+
+Antes de spec/planejar/codar/revisar/commitar/fazer deploy, consultar
+`skills-external/README.md` — mapeia tipo de tarefa → `SKILL.md` a ler
+primeiro (TDD, code review 5-eixos, git workflow, CI/CD, segurança, etc.).
+Espelho local porque o Luiz trabalha 100% remoto (sem Claude Code CLI
+local, `/plugin` não se aplica).
+
 ## Onde está o resto
 
 | Precisas de… | Vai a… |
