@@ -17,6 +17,7 @@
 
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
+import os from "node:os";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -25,6 +26,14 @@ const POLL_INTERVAL_MS = 5000;
 // configurado (comum logo após instalar o Claude Code no Windows,
 // que instala em ~/.local/bin sem adicionar ao PATH automaticamente).
 const CLAUDE_BIN = process.env.CLAUDE_BIN || "claude";
+// Limiar de alerta de memória: acima disto, grava um aviso de alta
+// prioridade em pendencias_negocio (visível na próxima verificação do
+// chat), em vez de deixar a VM chegar a OOM sem ninguém saber.
+const MEM_ALERT_THRESHOLD_PCT = parseInt(process.env.MEM_ALERT_THRESHOLD_PCT || "80", 10);
+// Não verifica a cada 5s (seria custo de rede à toa) — só de X em X ms.
+const MEM_CHECK_INTERVAL_MS = 5 * 60 * 1000;
+let lastMemCheckAt = 0;
+let memAlertActive = false;
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.error("❌ Define SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY antes de correr.");
@@ -169,10 +178,53 @@ async function runTask(task) {
   });
 }
 
+async function checkMemoryHealth() {
+  const now = Date.now();
+  if (now - lastMemCheckAt < MEM_CHECK_INTERVAL_MS) return;
+  lastMemCheckAt = now;
+
+  const totalMb = os.totalmem() / 1024 / 1024;
+  const freeMb = os.freemem() / 1024 / 1024;
+  const usedPct = ((totalMb - freeMb) / totalMb) * 100;
+
+  if (usedPct < MEM_ALERT_THRESHOLD_PCT) {
+    memAlertActive = false; // reseta para poder alertar de novo no futuro
+    return;
+  }
+  if (memAlertActive) return; // já avisado, não duplica
+
+  console.log(`  ⚠️ Memória em ${usedPct.toFixed(1)}% — a registar alerta.`);
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/pendencias_negocio`, {
+      method: "POST",
+      headers: { ...headers, Prefer: "return=minimal" },
+      body: JSON.stringify({
+        area: "infraestrutura",
+        area_slug: "infraestrutura",
+        area_label: "Infraestrutura",
+        titulo: `Alerta: bridge-worker com memória em ${usedPct.toFixed(1)}% (hostname ${os.hostname()})`,
+        detalhe:
+          `Gravado automaticamente pelo bridge-worker.js em ${new Date().toISOString()}.\n` +
+          `Memória total: ${totalMb.toFixed(0)}MB · livre: ${freeMb.toFixed(0)}MB · uso: ${usedPct.toFixed(1)}%.\n` +
+          `Limiar configurado: ${MEM_ALERT_THRESHOLD_PCT}%. Isto é um aviso preventivo, não uma falha — ` +
+          `mas vale investigar antes de chegar a OOM (histórico: a VM GCP anterior já sofreu isso com 1GB).`,
+        status: "pendente",
+        tipo: "acao",
+        prioridade: "alta",
+        requer_intervencao_humana: true,
+      }),
+    });
+    if (res.ok) memAlertActive = true;
+  } catch (err) {
+    console.error("  (falha ao gravar alerta de memória, não é fatal):", err.message);
+  }
+}
+
 async function loop() {
   console.log(`🌉 bridge-worker.js a correr — a verificar tarefas a cada ${POLL_INTERVAL_MS / 1000}s...`);
   while (true) {
     try {
+      await checkMemoryHealth();
       const task = await fetchNextTask();
       if (task) await runTask(task);
     } catch (err) {
