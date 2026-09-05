@@ -15,11 +15,8 @@
 // dedicado). Só executa tarefas para diretórios que já existem na tua
 // máquina — nunca cria projetos novos por si.
 
-import { execFile } from "node:child_process";
+import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { promisify } from "node:util";
-
-const execFileAsync = promisify(execFile);
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -75,8 +72,15 @@ async function runTask(task) {
 
   const allowedTools = task.allowed_tools || "Bash,Read,Write,Edit,Grep,Glob";
 
-  try {
-    const { stdout } = await execFileAsync(
+  await new Promise((resolve) => {
+    // spawn (em vez de execFile) + detached:true cria a tarefa no seu
+    // próprio grupo de processo. Isto é o que permite, no timeout, matar
+    // o `claude` E quaisquer subprocessos que ele tenha criado (ex: um
+    // servidor MCP travado, ou um prompt interativo tipo `gh` à espera
+    // de confirmação) — execFile com timeout só mata o processo direto,
+    // deixando "netos" vivos a segurar o pipe aberto, o que fazia esta
+    // promise nunca resolver e o worker inteiro travar para sempre.
+    const child = spawn(
       CLAUDE_BIN,
       [
         "-p", task.prompt,
@@ -86,44 +90,83 @@ async function runTask(task) {
       ],
       {
         cwd: task.project_path,
-        timeout: 15 * 60 * 1000,
-        maxBuffer: 20 * 1024 * 1024,
         // shell:true só é preciso no Windows (claude é instalado como
-        // .cmd/.exe e execFile puro dá ENOENT). Em Linux/Mac o binário é
-        // encontrado directamente, e shell:true é desnecessário — evita-se
-        // para não arriscar reintroduzir o problema de stdin visto no
-        // Windows.
+        // .cmd/.exe e spawn puro dá ENOENT). Em Linux/Mac o binário é
+        // encontrado directamente.
         shell: process.platform === "win32",
         stdio: ["ignore", "pipe", "pipe"],
+        // No Windows, detached tem semântica diferente e o kill de grupo
+        // negativo não se aplica — mantém-se o comportamento anterior lá.
+        detached: process.platform !== "win32",
       }
     );
 
-    let parsed;
-    try {
-      parsed = JSON.parse(stdout);
-    } catch {
-      parsed = { result: stdout };
-    }
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (d) => (stdout += d));
+    child.stderr.on("data", (d) => (stderr += d));
 
-    await updateTask(task.id, {
-      status: "done",
-      result: parsed.result || stdout,
-      cost_usd: parsed.total_cost_usd || null,
-      completed_at: new Date().toISOString(),
+    let finished = false;
+    const timer = setTimeout(() => {
+      if (finished) return;
+      console.log(`  ⏱️ Timeout de 15min — a matar grupo de processo (pid ${child.pid}).`);
+      try {
+        // pid negativo = mata o GRUPO inteiro (pai + subprocessos), não
+        // só o processo direto.
+        process.kill(process.platform === "win32" ? child.pid : -child.pid, "SIGKILL");
+      } catch (e) {
+        console.log(`  (aviso ao matar grupo: ${e.message})`);
+      }
+    }, 15 * 60 * 1000);
+
+    child.on("close", async (code, signal) => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+
+      if (signal === "SIGKILL") {
+        await updateTask(task.id, {
+          status: "error",
+          error_message:
+            `Timeout de 15min — processo (e subprocessos) morto à força.\n` +
+            `--- stdout ---\n${stdout.slice(0, 2000)}\n` +
+            `--- stderr ---\n${stderr.slice(0, 2000)}`,
+          completed_at: new Date().toISOString(),
+        });
+        console.log(`  ❌ Timeout — morto.`);
+        return resolve();
+      }
+
+      if (code !== 0) {
+        await updateTask(task.id, {
+          status: "error",
+          error_message:
+            `code=${code} signal=${signal}\n` +
+            `--- stdout ---\n${stdout.slice(0, 2000)}\n` +
+            `--- stderr ---\n${stderr.slice(0, 2000)}`,
+          completed_at: new Date().toISOString(),
+        });
+        console.log(`  ❌ Erro: exit code ${code}.`);
+        return resolve();
+      }
+
+      let parsed;
+      try {
+        parsed = JSON.parse(stdout);
+      } catch {
+        parsed = { result: stdout };
+      }
+
+      await updateTask(task.id, {
+        status: "done",
+        result: parsed.result || stdout,
+        cost_usd: parsed.total_cost_usd || null,
+        completed_at: new Date().toISOString(),
+      });
+      console.log(`  ✅ Concluída.`);
+      resolve();
     });
-    console.log(`  ✅ Concluída.`);
-  } catch (err) {
-    const diagnostics =
-      `code=${err.code} signal=${err.signal}\n` +
-      `--- stdout ---\n${String(err.stdout || "(vazio)").slice(0, 2000)}\n` +
-      `--- stderr ---\n${String(err.stderr || "(vazio)").slice(0, 2000)}`;
-    await updateTask(task.id, {
-      status: "error",
-      error_message: diagnostics.slice(0, 4000),
-      completed_at: new Date().toISOString(),
-    });
-    console.log(`  ❌ Erro: ${err.message}`);
-  }
+  });
 }
 
 async function loop() {
