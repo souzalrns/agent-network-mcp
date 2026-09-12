@@ -27,6 +27,23 @@ const CONCISION_DIRECTIVE =
   "floreios. Estrutura a resposta só com o que for necessário para o " +
   "pedido em causa.";
 
+// Anti-alucinação / grounding: aplica-se a TODOS os agentes.
+// Se o contexto injectado (RAG, tool_evaluations, estado) não contiver o
+// facto pedido, o modelo deve admitir a falta — nunca completar de memória
+// de treino (licenças, números, status de tools, etc.).
+const GROUNDING_DIRECTIVE =
+  "\n\nRegras de evidência (obrigatórias):\n" +
+  "1. Factos concretos (licenças, versões, status de tools, papéis de " +
+  "arquitectura, números, datas) só a partir do contexto injectado nesta " +
+  "mensagem (blocos de conhecimento / banco de ferramentas / estado).\n" +
+  "2. Se o contexto recuperado NÃO contiver o dado pedido, diz " +
+  "explicitamente que não tens esse dado na base — NUNCA completes de " +
+  "memória de treino nem inventes valores plausíveis.\n" +
+  "3. Quando usares um facto do contexto, cita a fonte (nome da tool, " +
+  "source do chunk, ou tabela).\n" +
+  "4. Diferencia: (a) está no contexto; (b) não está no contexto; " +
+  "(c) hipótese tua marcada como hipótese.";
+
 async function callGemini(systemPrompt, userMessage, maxTokens = 1500) {
   if (!GEMINI_API_KEY) {
     throw new Error(
@@ -110,27 +127,31 @@ async function runAgent(agentId, userRequest) {
         .join("\n")
     : "(sem estado guardado ainda)";
 
-  // RAG: pesquisa a base de conhecimento real (não texto colado no prompt)
-  // antes de responder. Se não houver nada relevante ou a base estiver
-  // vazia/indisponível, isto devolve string vazia e o agente responde
-  // normalmente com o que já tem no systemPrompt.
+  // RAG: knowledge_chunks (embeddings). radar-ferramentas NÃO usa isto —
+  // usa tool_evaluations (fonte de verdade para status de ferramentas).
+  // Ingerir factos de tools em knowledge_chunks NÃO altera o radar.
   const supabase = getClient();
-  const knowledge = await retrieveContext(supabase, agentId, userRequest);
+  const knowledge = await retrieveContext(supabase, agentId, userRequest, {
+    topK: 8,
+    alsoGlobal: true,
+  });
 
   let knowledgeBlock = knowledge
-    ? `\n\nConhecimento relevante recuperado da base de dados (usa isto como fonte primária quando aplicável, e cita a fonte):\n${knowledge}`
-    : "";
+    ? `\n\n=== CONTEXTO RECUPERADO (knowledge_chunks) ===\n` +
+      `Usa APENAS isto + o estado abaixo para factos. Cita [Fonte: …].\n` +
+      `${knowledge}\n=== FIM CONTEXTO RECUPERADO ===`
+    : `\n\n=== CONTEXTO RECUPERADO ===\n` +
+      `(vazio — nenhum chunk relevante em knowledge_chunks para este ` +
+      `agente/query. NÃO inventes factos; diz que não tens o dado na base.)\n` +
+      `=== FIM CONTEXTO RECUPERADO ===`;
 
-  // radar-ferramentas é especial: em vez de RAG por embeddings (que
-  // ficaria desatualizado sempre que uma ferramenta muda de status), lê
-  // a tabela tool_evaluations directamente e sempre por inteiro — é
-  // pequena, e o agente precisa de ver o quadro completo (pendentes,
-  // integradas, rejeitadas) para responder bem.
+  // radar-ferramentas: única fonte = tool_evaluations (não RAG).
   if (agentId === "radar-ferramentas") {
     const evaluations = await getToolEvaluations();
     knowledgeBlock = evaluations.length
-      ? "\n\nBanco de ferramentas/soluções já avaliadas (tabela tool_evaluations, " +
-        `${evaluations.length} entradas, mais recentes primeiro):\n` +
+      ? "\n\n=== BANCO tool_evaluations (ÚNICA fonte de verdade para tools) ===\n" +
+        `${evaluations.length} entradas. Responde SÓ com base nisto. ` +
+        `Licenças/status que não estejam aqui = "não registado no banco".\n` +
         evaluations
           .map(
             (e) =>
@@ -140,21 +161,19 @@ async function runAgent(agentId, userRequest) {
               (e.proximo_passo ? `  Próximo passo: ${e.proximo_passo}\n` : "") +
               (e.descoberto_via ? `  Descoberto via: ${e.descoberto_via}` : "")
           )
-          .join("\n\n")
-      : "\n\n(Banco de ferramentas ainda vazio.)";
+          .join("\n\n") +
+        "\n=== FIM tool_evaluations ==="
+      : "\n\n=== BANCO tool_evaluations VAZIO ===\n" +
+        "Não inventes avaliações. Diz que o banco está vazio.\n" +
+        "=== FIM ===";
   }
 
-  // O systemPrompt do agente vai sozinho e sem alterações — é o prefixo
-  // estático que o Gemini pode cachear (grátis, implicit caching, até 90%
-  // de desconto). Tudo o que muda de chamada para chamada (estado do
-  // projeto, RAG, o pedido em si) vai no "contents", que nunca é cacheado
-  // mas também é normalmente muito mais pequeno que o systemPrompt.
   const userMessage =
     `Estado atual conhecido do projeto:\n${stateSummary}${knowledgeBlock}` +
     `\n\nPedido:\n${userRequest}`;
 
   const summary = await callGemini(
-    agent.systemPrompt + CONCISION_DIRECTIVE,
+    agent.systemPrompt + CONCISION_DIRECTIVE + GROUNDING_DIRECTIVE,
     userMessage,
     1500
   );
@@ -307,13 +326,10 @@ const handler = createMcpHandler(
       "ingest_knowledge",
       "Alimenta a base de conhecimento (RAG) de um agente com conteúdo " +
         "real — divide o texto em pedaços, gera embedding de cada um " +
-        "(Gemini) e guarda em knowledge_chunks. Usa isto sempre que houver " +
-        "uma skill, norma técnica, ou documento de referência novo para um " +
-        "agente consultar em respostas futuras, em vez de colar o texto " +
-        "inteiro no systemPrompt dele. Usa agent='global' para conhecimento " +
-        "fundamental que deve ficar visível para TODOS os agentes da rede " +
-        "(ex: metodologia, princípios da Constituição PCU) — em vez de um " +
-        "ID de agente específico.",
+        "(Gemini) e guarda em knowledge_chunks. Substitui chunks anteriores " +
+        "com a mesma source para o mesmo agente. NÃO alimenta tool_evaluations " +
+        "(radar-ferramentas); para tools usa a tabela tool_evaluations. " +
+        "Usa agent='global' para conhecimento visível a todos.",
       {
         agent: z
           .enum([...Object.keys(AGENTS), "global"])
@@ -344,7 +360,9 @@ const handler = createMcpHandler(
               {
                 type: "text",
                 text:
-                  `Ingerido para '${agent}': ${result.inserted}/${result.total} pedaços guardados` +
+                  `Ingerido para '${agent}' (source=${source}): ` +
+                  `${result.inserted}/${result.total} pedaços; ` +
+                  `apagados anteriores=${result.deleted ?? 0}` +
                   (result.errors.length ? `. Erros: ${result.errors.join("; ")}` : "."),
               },
             ],
@@ -508,7 +526,9 @@ const handler = createMcpHandler(
         justificativa_full_cycle: z
           .string()
           .optional()
-          .describe("Se não usou fast_path, a justificação para o ciclo completo."),
+          .describe(
+            "Se não usou fast path, justificação curta do full cycle."
+          ),
       },
       async ({
         agent,
@@ -521,18 +541,18 @@ const handler = createMcpHandler(
       }) => {
         await logAgentCall({
           agent,
-          summary: demanda_resumo.slice(0, 200),
+          summary: demanda_resumo,
           success: sucesso,
-          origem: "interno",
-          capacidadeId: capacidade_id,
-          fastPath: fast_path,
-          custoEstimado: custo_estimado,
-          justificativaFullCycle: justificativa_full_cycle,
+          origem: "orquestrador_manual",
+          meta: {
+            capacidade_id,
+            fast_path,
+            custo_estimado,
+            justificativa_full_cycle,
+          },
         });
         return {
-          content: [
-            { type: "text", text: `Execução registada em agent_log para '${agent}'.` },
-          ],
+          content: [{ type: "text", text: `Execução registada para ${agent}.` }],
         };
       }
     );
@@ -541,4 +561,4 @@ const handler = createMcpHandler(
   { basePath: "/api" }
 );
 
-export { handler as GET, handler as POST };
+export { handler as GET, handler as POST, handler as DELETE };
