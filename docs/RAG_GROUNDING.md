@@ -1,35 +1,36 @@
 # RAG + grounding (produção)
 
-## Problema diagnosticado (2026-09-12)
+## Problema (2026-09-12)
 
-1. **Ingestão grava, agente não usa a fonte certa**
+1. **Duas fontes de verdade**
    - `ingest_knowledge` → `knowledge_chunks`
-   - `radar-ferramentas` lê **só** `tool_evaluations` injectada em tempo real
-   - Corrigir RAG **não** muda respostas do radar sobre tools
+   - `radar-ferramentas` status → **`tool_evaluations`**
+   - Ingerir só em `knowledge_chunks` **não** actualiza o banco do radar
 
-2. **Recuperação frágil** — topK baixo; chunks antigos não apagados ao reingerir
+2. **Recuperação** — topK baixo; só fallback global se agent vazio; alucinação quando vazio
 
-3. **Alucinação** — modelo completava licenças/papéis de memória de treino
+3. **Alucinação** — licenças/papéis de memória de treino
 
-## Mitigações no código
+## Mitigações (código actual)
 
 | Mudança | Onde |
 |---------|------|
-| `GROUNDING_DIRECTIVE` em todos os agents | `app/api/mcp/route.js` |
+| `GROUNDING_DIRECTIVE` em todos | `lib/agentRuntime.js` |
+| Merge agent + **global** hits + `minSimilarity` | `lib/knowledge.js` |
+| topK 12, fetchK ampliado | `retrieveContextDetailed` |
+| Radar: **tool_evaluations** + suplemento RAG | `runAgent` |
+| Aviso no `ingest_knowledge` se agent=radar | `app/api/mcp/route.js` |
 | Bloco explícito quando RAG vazio | `runAgent` |
-| radar: texto “única fonte = tool_evaluations” | `runAgent` |
-| `topK=8` + fallback `global` | `lib/knowledge.js` `retrieveContext` |
-| `ingestDocument` replace por (agent_id, source) | `lib/knowledge.js` |
 
 ## Onde registar o quê
 
-| Tipo de facto | Tabela / mecanismo |
-|---------------|-------------------|
-| Status/avaliação de ferramenta | `tool_evaluations` |
-| Skills, normas, docs longos | `knowledge_chunks` via ingest |
-| Conhecimento transversal | `agent_id = global` |
+| Tipo de facto | Onde |
+|---------------|------|
+| Status / bloqueio / próximo passo de tool | `tool_evaluations` |
+| Docs, skills, normas, licenças em texto longo | `knowledge_chunks` (`ingest_knowledge`) |
+| Transversal | `agent_id = global` |
 
-## SQL diagnóstico (Supabase)
+## SQL diagnóstico
 
 ```sql
 select agent_id, source, count(*) from knowledge_chunks group by 1, 2 order by 3 desc;
@@ -39,3 +40,5 @@ select nome, status, left(resumo, 80) from tool_evaluations order by updated_at 
 ## Regra de produto
 
 > Se o contexto recuperado não contiver o dado, diz que não tens — **nunca** completes de memória.
+
+Env opcional: `RAG_MIN_SIMILARITY` (default `0.22`).
