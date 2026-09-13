@@ -2,17 +2,27 @@ import { createClient } from "@supabase/supabase-js";
 import {
   verificarPassword,
   assinarSessao,
+  assertSecret,
   SESSION_MAX_AGE_SECONDS,
 } from "../_lib/session.js";
 
 function getClient() {
   return createClient(
     process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    assertSecret()
   );
 }
 
 export async function POST(request) {
+  try {
+    assertSecret();
+  } catch (e) {
+    return Response.json(
+      { error: "Servico indisponivel: autenticacao nao configurada" },
+      { status: 503 }
+    );
+  }
+
   const { password } = await request.json().catch(() => ({}));
   if (!password) {
     return Response.json({ error: "Password em falta" }, { status: 400 });

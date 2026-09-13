@@ -11,7 +11,16 @@ function getClient() {
 const PESO_PRIORIDADE = { alta: 0, media: 1, baixa: 2 };
 
 export async function GET(request) {
-  if (!sessaoValida(request.headers.get("cookie"))) {
+  let authorized = false;
+  try {
+    authorized = sessaoValida(request.headers.get("cookie"));
+  } catch (e) {
+    return Response.json(
+      { error: "Servico indisponivel: autenticacao nao configurada" },
+      { status: 503 }
+    );
+  }
+  if (!authorized) {
     return Response.json({ error: "Não autorizado" }, { status: 401 });
   }
 

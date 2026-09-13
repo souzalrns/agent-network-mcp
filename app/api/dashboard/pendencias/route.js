@@ -9,7 +9,16 @@ function getClient() {
 }
 
 export async function POST(request) {
-  if (!sessaoValida(request.headers.get("cookie"))) {
+  let authorized = false;
+  try {
+    authorized = sessaoValida(request.headers.get("cookie"));
+  } catch (e) {
+    return Response.json(
+      { error: "Servico indisponivel: autenticacao nao configurada" },
+      { status: 503 }
+    );
+  }
+  if (!authorized) {
     return Response.json({ error: "Não autorizado" }, { status: 401 });
   }
 
