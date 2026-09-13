@@ -383,4 +383,47 @@ const handler = createMcpHandler(
   { basePath: "/api" }
 );
 
-export { handler as GET, handler as POST, handler as DELETE };
+const innerHandler = handler;
+
+function unauthorized() {
+  return new Response(JSON.stringify({ error: "Unauthorized" }), {
+    status: 401,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+function misconfigured() {
+  return new Response(
+    JSON.stringify({
+      error: "Service unavailable: MCP_API_KEY is not configured",
+    }),
+    { status: 503, headers: { "Content-Type": "application/json" } }
+  );
+}
+
+function constantTimeEqual(a, b) {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+async function withAuth(request) {
+  const expected = process.env.MCP_API_KEY;
+  if (!expected || expected.length < 16) {
+    console.error(
+      "MCP_API_KEY ausente ou demasiado curta -- /api/mcp indisponivel (fail-closed)."
+    );
+    return misconfigured();
+  }
+  const header = request.headers.get("authorization") || "";
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  if (!match || !constantTimeEqual(match[1], expected)) {
+    return unauthorized();
+  }
+  return innerHandler(request);
+}
+
+export { withAuth as GET, withAuth as POST, withAuth as DELETE };
