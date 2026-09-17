@@ -6,7 +6,7 @@ import {
   logAgentCall,
   getClient,
 } from "../../../lib/memory.js";
-import { ingestDocument } from "../../../lib/knowledge.js";
+import { ingestDocument, retrieveKnowledgeHits } from "../../../lib/knowledge.js";
 import { routeRequest, runAgent } from "../../../lib/agentRuntime.js";
 
 const handler = createMcpHandler(
@@ -192,6 +192,81 @@ const handler = createMcpHandler(
         } catch (err) {
           return {
             content: [{ type: "text", text: `Falha na ingestão: ${err.message}` }],
+          };
+        }
+      }
+    );
+
+    server.tool(
+      "retrieve_knowledge",
+      "Pesquisa a base de conhecimento (RAG) por similaridade semantica e " +
+        "devolve os pedacos mais relevantes, estruturados (nao um texto " +
+        "unico). Usa isto para consultar o que ja foi ingerido via " +
+        "ingest_knowledge, antes de responder com base em memoria. " +
+        "NOTA: nem todos os campos de hit tem dado real hoje -- " +
+        "'metadata' vem sempre null (a tabela nao tem essa coluna), e " +
+        "'citation.locator' vem sempre null (o schema so guarda a fonte, " +
+        "nao a posicao dentro dela).",
+      {
+        kb: z
+          .string()
+          .describe(
+            "Base de conhecimento a pesquisar -- corresponde ao agent_id " +
+              "usado em ingest_knowledge (ou 'global')."
+          ),
+        query: z.string().describe("A pergunta ou texto a pesquisar."),
+        top_k: z
+          .number()
+          .int()
+          .min(1)
+          .max(30)
+          .optional()
+          .describe("Numero maximo de resultados. Por omissao: 8."),
+        filters: z
+          .record(z.any())
+          .optional()
+          .describe(
+            "Reservado para filtros futuros -- aceite mas SEM EFEITO na " +
+              "implementacao actual (matchOnce so filtra por kb)."
+          ),
+        require_citations: z
+          .boolean()
+          .optional()
+          .describe(
+            "Se true, descarta hits sem 'source' identificado. Por " +
+              "omissao: false."
+          ),
+      },
+      async ({ kb, query, top_k, filters, require_citations }) => {
+        const supabase = getClient();
+        if (!supabase) {
+          return {
+            content: [
+              { type: "text", text: "Supabase não configurado — RAG indisponível." },
+            ],
+          };
+        }
+        try {
+          const hits = await retrieveKnowledgeHits(
+            supabase,
+            query,
+            kb,
+            top_k || 8,
+            { filters, requireCitations: require_citations === true }
+          );
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({ hits, hitCount: hits.length }),
+              },
+            ],
+          };
+        } catch (err) {
+          return {
+            content: [
+              { type: "text", text: `Falha na pesquisa: ${err.message}` },
+            ],
           };
         }
       }
