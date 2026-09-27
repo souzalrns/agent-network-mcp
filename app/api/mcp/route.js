@@ -9,12 +9,23 @@ import {
 import { ingestDocument, retrieveKnowledgeHits } from "../../../lib/knowledge.js";
 import { routeRequest, runAgent } from "../../../lib/agentRuntime.js";
 
+// S12/A14: todos os schemas abaixo são passados como z.object({...}).strict()
+// em vez do "raw shape" que o mcp-handler aceitaria por omissão (que resolve
+// para modo "strip" -- descarta chaves desconhecidas em silêncio, em vez de
+// rejeitar). O SDK (@modelcontextprotocol/sdk/server/mcp.js:getZodSchemaObject)
+// detecta uma instância Zod já construída (tem `_def`) e usa-a tal e qual, sem
+// re-envolver -- confirmado lendo o código-fonte instalado, não assumido.
+// Nenhum destes 9 schemas tem forma variável no nível de topo, por isso nenhum
+// precisou de `.strip()` em vez de `.strict()`. A excepção aparente é o campo
+// `filters` de retrieve_knowledge (`z.record(z.any())`), mas isso é um campo
+// *dentro* do objeto, não o objeto em si -- `.strict()` no nível de topo não
+// afecta o que `z.record()` aceita internamente, então não é ambíguo.
 const handler = createMcpHandler(
   (server) => {
     server.tool(
       "list_agents",
       "Lista os agentes de projeto disponíveis na rede LRNSdigital, com a descrição de cada um.",
-      {},
+      z.object({}).strict(),
       async () => ({
         content: [
           {
@@ -33,11 +44,13 @@ const handler = createMcpHandler(
         "O router decide automaticamente qual agente de projeto (mesaflow, " +
         "viannalegal, etc.) deve responder, com base no contexto fixo de " +
         "cada negócio e na memória persistente do projeto.",
-      {
-        request: z
-          .string()
-          .describe("O pedido do utilizador, em linguagem natural."),
-      },
+      z
+        .object({
+          request: z
+            .string()
+            .describe("O pedido do utilizador, em linguagem natural."),
+        })
+        .strict(),
       async ({ request }) => {
         const { agent: agentId, reason } = await routeRequest(request);
 
@@ -81,10 +94,12 @@ const handler = createMcpHandler(
       "run_specific_agent",
       "Chama diretamente um agente de projeto específico, ignorando o " +
         "router — útil quando já sabes qual projeto queres.",
-      {
-        agent: z.enum(Object.keys(AGENTS)).describe("ID do agente a chamar."),
-        request: z.string().describe("O pedido a enviar a esse agente."),
-      },
+      z
+        .object({
+          agent: z.enum(Object.keys(AGENTS)).describe("ID do agente a chamar."),
+          request: z.string().describe("O pedido a enviar a esse agente."),
+        })
+        .strict(),
       async ({ agent, request }) => {
         let success = false;
         try {
@@ -109,17 +124,19 @@ const handler = createMcpHandler(
         "pendências ou factos que devem estar disponíveis em conversas " +
         "futuras com esse agente, além do snapshot automático de cada " +
         "interação.",
-      {
-        agent: z
-          .enum(Object.keys(AGENTS))
-          .describe("ID do agente/projeto a que este estado pertence."),
-        key: z
-          .string()
-          .describe("Chave curta e descritiva (ex: 'pendencias', 'decisao_marca')."),
-        value: z
-          .string()
-          .describe("O valor a guardar, em texto livre ou JSON serializado."),
-      },
+      z
+        .object({
+          agent: z
+            .enum(Object.keys(AGENTS))
+            .describe("ID do agente/projeto a que este estado pertence."),
+          key: z
+            .string()
+            .describe("Chave curta e descritiva (ex: 'pendencias', 'decisao_marca')."),
+          value: z
+            .string()
+            .describe("O valor a guardar, em texto livre ou JSON serializado."),
+        })
+        .strict(),
       async ({ agent, key, value }) => {
         let parsed;
         try {
@@ -148,20 +165,22 @@ const handler = createMcpHandler(
         "com a mesma source para o mesmo agente. NÃO alimenta tool_evaluations " +
         "(radar-ferramentas); para tools usa a tabela tool_evaluations. " +
         "Usa agent='global' para conhecimento visível a todos.",
-      {
-        agent: z
-          .enum([...Object.keys(AGENTS), "global"])
-          .describe(
-            "ID do agente a que este conhecimento pertence, ou 'global' " +
-              "para conhecimento visível a todos os agentes."
-          ),
-        source: z
-          .string()
-          .describe("Nome curto da fonte (ex: 'SKILL.md usucapiao PT-BR')."),
-        text: z
-          .string()
-          .describe("O conteúdo completo a ingerir, em texto livre."),
-      },
+      z
+        .object({
+          agent: z
+            .enum([...Object.keys(AGENTS), "global"])
+            .describe(
+              "ID do agente a que este conhecimento pertence, ou 'global' " +
+                "para conhecimento visível a todos os agentes."
+            ),
+          source: z
+            .string()
+            .describe("Nome curto da fonte (ex: 'SKILL.md usucapiao PT-BR')."),
+          text: z
+            .string()
+            .describe("O conteúdo completo a ingerir, em texto livre."),
+        })
+        .strict(),
       async ({ agent, source, text }) => {
         const supabase = getClient();
         if (!supabase) {
@@ -207,36 +226,42 @@ const handler = createMcpHandler(
         "'metadata' vem sempre null (a tabela nao tem essa coluna), e " +
         "'citation.locator' vem sempre null (o schema so guarda a fonte, " +
         "nao a posicao dentro dela).",
-      {
-        kb: z
-          .string()
-          .describe(
-            "Base de conhecimento a pesquisar -- corresponde ao agent_id " +
-              "usado em ingest_knowledge (ou 'global')."
-          ),
-        query: z.string().describe("A pergunta ou texto a pesquisar."),
-        top_k: z
-          .number()
-          .int()
-          .min(1)
-          .max(30)
-          .optional()
-          .describe("Numero maximo de resultados. Por omissao: 8."),
-        filters: z
-          .record(z.any())
-          .optional()
-          .describe(
-            "Reservado para filtros futuros -- aceite mas SEM EFEITO na " +
-              "implementacao actual (matchOnce so filtra por kb)."
-          ),
-        require_citations: z
-          .boolean()
-          .optional()
-          .describe(
-            "Se true, descarta hits sem 'source' identificado. Por " +
-              "omissao: false."
-          ),
-      },
+      z
+        .object({
+          kb: z
+            .string()
+            .describe(
+              "Base de conhecimento a pesquisar -- corresponde ao agent_id " +
+                "usado em ingest_knowledge (ou 'global')."
+            ),
+          query: z.string().describe("A pergunta ou texto a pesquisar."),
+          top_k: z
+            .number()
+            .int()
+            .min(1)
+            .max(30)
+            .optional()
+            .describe("Numero maximo de resultados. Por omissao: 8."),
+          // z.record(z.any()) aceita qualquer chave *dentro* deste campo, por
+          // desenho (filtros futuros ainda não definidos) -- isso não é
+          // afectado pelo .strict() do objecto pai, que só rejeita chaves
+          // desconhecidas no nível de topo (ex: um campo "kb2" inventado).
+          filters: z
+            .record(z.any())
+            .optional()
+            .describe(
+              "Reservado para filtros futuros -- aceite mas SEM EFEITO na " +
+                "implementacao actual (matchOnce so filtra por kb)."
+            ),
+          require_citations: z
+            .boolean()
+            .optional()
+            .describe(
+              "Se true, descarta hits sem 'source' identificado. Por " +
+                "omissao: false."
+            ),
+        })
+        .strict(),
       async ({ kb, query, top_k, filters, require_citations }) => {
         const supabase = getClient();
         if (!supabase) {
@@ -283,29 +308,31 @@ const handler = createMcpHandler(
         "minutos, dependendo da tarefa. Nunca uses isto para tarefas " +
         "vagas ou arriscadas; o prompt deve ser específico e autocontido " +
         "(o Claude Code não vai pedir esclarecimentos, corre sem UI).",
-      {
-        prompt: z
-          .string()
-          .describe(
-            "Instrução completa e específica para o Claude Code executar. " +
-              "Deve ser autocontida — não há follow-up interativo."
-          ),
-        project_path: z
-          .string()
-          .describe(
-            "Caminho absoluto do projeto na máquina do Luiz onde a tarefa " +
-              "deve correr (ex: /Users/luiz/projects/mesaflow-api)."
-          ),
-        allowed_tools: z
-          .string()
-          .optional()
-          .describe(
-            "Lista de tools permitidas ao Claude Code, separadas por " +
-              "vírgula (ex: 'Bash,Read,Write,Edit'). Por omissão: " +
-              "'Bash,Read,Write,Edit,Grep,Glob'. Mantém restrito ao " +
-              "necessário — nunca uses isto para dar acesso irrestrito."
-          ),
-      },
+      z
+        .object({
+          prompt: z
+            .string()
+            .describe(
+              "Instrução completa e específica para o Claude Code executar. " +
+                "Deve ser autocontida — não há follow-up interativo."
+            ),
+          project_path: z
+            .string()
+            .describe(
+              "Caminho absoluto do projeto na máquina do Luiz onde a tarefa " +
+                "deve correr (ex: /Users/luiz/projects/mesaflow-api)."
+            ),
+          allowed_tools: z
+            .string()
+            .optional()
+            .describe(
+              "Lista de tools permitidas ao Claude Code, separadas por " +
+                "vírgula (ex: 'Bash,Read,Write,Edit'). Por omissão: " +
+                "'Bash,Read,Write,Edit,Grep,Glob'. Mantém restrito ao " +
+                "necessário — nunca uses isto para dar acesso irrestrito."
+            ),
+        })
+        .strict(),
       async ({ prompt, project_path, allowed_tools }) => {
         const supabase = getClient();
         if (!supabase) {
@@ -354,9 +381,11 @@ const handler = createMcpHandler(
       "Verifica o status/resultado de uma tarefa despachada para o " +
         "Claude Code local via dispatch_code_task. Se não passares um id, " +
         "devolve as tarefas mais recentes (pendentes e concluídas).",
-      {
-        id: z.string().optional().describe("ID da tarefa (devolvido por dispatch_code_task)."),
-      },
+      z
+        .object({
+          id: z.string().optional().describe("ID da tarefa (devolvido por dispatch_code_task)."),
+        })
+        .strict(),
       async ({ id }) => {
         const supabase = getClient();
         if (!supabase) {
@@ -400,33 +429,35 @@ const handler = createMcpHandler(
         "catálogo, sem passar por run_specific_agent nem ask_agent_network. " +
         "Usa isto sempre que resolveres uma demanda dessa forma, para a " +
         "execução não ficar por registar.",
-      {
-        agent: z
-          .string()
-          .describe("ID do agente/projeto a que esta execução pertence."),
-        demanda_resumo: z
-          .string()
-          .describe("Resumo curto da demanda resolvida."),
-        capacidade_id: z
-          .array(z.string())
-          .optional()
-          .describe("IDs das Capacidades do catálogo usadas nesta execução."),
-        fast_path: z
-          .boolean()
-          .describe("Se a demanda foi resolvida pelo caminho rápido (fast path) ou por ciclo completo."),
-        custo_estimado: z
-          .number()
-          .int()
-          .optional()
-          .describe("Custo estimado desta execução, na unidade acordada."),
-        sucesso: z.boolean().describe("Se a execução foi bem-sucedida."),
-        justificativa_full_cycle: z
-          .string()
-          .optional()
-          .describe(
-            "Se não usou fast path, justificação curta do full cycle."
-          ),
-      },
+      z
+        .object({
+          agent: z
+            .string()
+            .describe("ID do agente/projeto a que esta execução pertence."),
+          demanda_resumo: z
+            .string()
+            .describe("Resumo curto da demanda resolvida."),
+          capacidade_id: z
+            .array(z.string())
+            .optional()
+            .describe("IDs das Capacidades do catálogo usadas nesta execução."),
+          fast_path: z
+            .boolean()
+            .describe("Se a demanda foi resolvida pelo caminho rápido (fast path) ou por ciclo completo."),
+          custo_estimado: z
+            .number()
+            .int()
+            .optional()
+            .describe("Custo estimado desta execução, na unidade acordada."),
+          sucesso: z.boolean().describe("Se a execução foi bem-sucedida."),
+          justificativa_full_cycle: z
+            .string()
+            .optional()
+            .describe(
+              "Se não usou fast path, justificação curta do full cycle."
+            ),
+        })
+        .strict(),
       async ({
         agent,
         demanda_resumo,
