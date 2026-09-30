@@ -266,6 +266,37 @@ test("log_execution: agent, demanda_resumo, fast_path e sucesso chegam", async (
   assert.equal(ins.body.summary, "RESUMO-E2E");
   assert.equal(ins.body.success, false);
   assert.equal(ins.body.origem, "orquestrador_manual");
+  assert.equal(ins.body.fast_path, true);
+  // Opcionais não enviados ficam fora do insert (a coluna usa o DEFAULT).
+  for (const col of ["capacidade_id", "custo_estimado", "justificativa_full_cycle", "meta"]) {
+    assert.equal(col in ins.body, false, `${col} não devia ir no insert`);
+  }
+});
+
+test("log_execution: os 4 campos opcionais chegam ao agent_log", async () => {
+  const m = mark();
+  assert.equal(
+    text(
+      await call("log_execution", {
+        agent: "mesaflow",
+        demanda_resumo: "RESUMO-META-E2E",
+        capacidade_id: ["cap-e2e-1", "cap-e2e-2"],
+        fast_path: false,
+        custo_estimado: 42,
+        sucesso: true,
+        justificativa_full_cycle: "JUSTIFICATIVA-E2E",
+      })
+    ),
+    "Execução registada para mesaflow."
+  );
+  const ins = calls(m).find((x) => x.path === "agent_log" && x.method === "POST");
+  assert.deepEqual(ins.body.capacidade_id, ["cap-e2e-1", "cap-e2e-2"]);
+  assert.equal(ins.body.fast_path, false);
+  assert.equal(ins.body.custo_estimado, 42);
+  assert.equal(ins.body.justificativa_full_cycle, "JUSTIFICATIVA-E2E");
+  assert.equal(ins.body.summary, "RESUMO-META-E2E");
+  assert.equal(ins.body.success, true);
+  assert.equal("meta" in ins.body, false);
 });
 
 test(".strict(): chave extra é rejeitada e a tool não corre", async () => {
