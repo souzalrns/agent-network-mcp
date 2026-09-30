@@ -517,12 +517,13 @@ const handler = createMcpHandler(
           summary: demanda_resumo,
           success: sucesso,
           origem: "orquestrador_manual",
-          meta: {
-            capacidade_id,
-            fast_path,
-            custo_estimado,
-            justificativa_full_cycle,
-          },
+          // No nível de topo, com os nomes que logAgentCall espera
+          // (lib/memory.js:76-85). Antes iam dentro de `meta`, que
+          // logAgentCall ignora, e as 4 colunas ficavam sempre vazias.
+          capacidadeId: capacidade_id,
+          fastPath: fast_path,
+          custoEstimado: custo_estimado,
+          justificativaFullCycle: justificativa_full_cycle,
         });
         return {
           content: [{ type: "text", text: `Execução registada para ${agent}.` }],
