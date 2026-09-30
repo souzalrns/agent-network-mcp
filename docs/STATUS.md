@@ -56,3 +56,4 @@ node scripts/document-agents.js
 |------|------|
 | 19/08/2026 | STATUS inicial + document-agents |
 | 19/08/2026 | Graphify local; Actions desligados documentados |
+| 30/09/2026 | J6: ledger de tokens (`token_usage`, 1 linha por chamada Gemini) em PR `feat/j6-token-ledger` — SQL pendente-dev, ver `docs/ops/TOKEN-LEDGER.md` |

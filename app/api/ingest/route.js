@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { getClient } from "../../../lib/memory.js";
 import { ingestDocument } from "../../../lib/knowledge.js";
 
@@ -42,7 +43,9 @@ export async function POST(req) {
   }
 
   try {
-    const result = await ingestDocument(supabase, agentId, source, text);
+    const result = await ingestDocument(supabase, agentId, source, text, {
+      runId: randomUUID(),
+    });
     return Response.json(result);
   } catch (err) {
     return Response.json({ error: err.message }, { status: 500 });
