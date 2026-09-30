@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
 import { AGENTS } from "../../../lib/agents.js";
@@ -52,7 +53,9 @@ const handler = createMcpHandler(
         })
         .strict(),
       async ({ request }) => {
-        const { agent: agentId, reason } = await routeRequest(request);
+        // J6: 1 run_id por pedido MCP, liga router + agente + embeddings no token_usage.
+        const runId = randomUUID();
+        const { agent: agentId, reason } = await routeRequest(request, { runId });
 
         if (!agentId || !AGENTS[agentId]) {
           return {
@@ -69,7 +72,7 @@ const handler = createMcpHandler(
 
         let success = false;
         try {
-          const summary = await runAgent(agentId, request);
+          const summary = await runAgent(agentId, request, { runId });
           success = true;
           return {
             content: [
@@ -103,7 +106,7 @@ const handler = createMcpHandler(
       async ({ agent, request }) => {
         let success = false;
         try {
-          const summary = await runAgent(agent, request);
+          const summary = await runAgent(agent, request, { runId: randomUUID() });
           success = true;
           return { content: [{ type: "text", text: summary }] };
         } finally {
@@ -191,7 +194,9 @@ const handler = createMcpHandler(
           };
         }
         try {
-          const result = await ingestDocument(supabase, agent, source, text);
+          const result = await ingestDocument(supabase, agent, source, text, {
+            runId: randomUUID(),
+          });
           return {
             content: [
               {
@@ -277,7 +282,11 @@ const handler = createMcpHandler(
             query,
             kb,
             top_k || 8,
-            { filters, requireCitations: require_citations === true }
+            {
+              filters,
+              requireCitations: require_citations === true,
+              runId: randomUUID(),
+            }
           );
           return {
             content: [
