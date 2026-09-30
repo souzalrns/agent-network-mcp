@@ -56,4 +56,6 @@ node scripts/document-agents.js
 |------|------|
 | 19/08/2026 | STATUS inicial + document-agents |
 | 19/08/2026 | Graphify local; Actions desligados documentados |
-| 30/09/2026 | J6: ledger de tokens (`token_usage`, 1 linha por chamada Gemini) em PR `feat/j6-token-ledger` — SQL pendente-dev, ver `docs/ops/TOKEN-LEDGER.md` |
+| 30/09/2026 | Fix das 9 tools MCP (PR #9): recebiam `undefined` desde 27/09 (`024e0ee`); agora `registerTool`; e2e em `tests/e2e/` |
+| 30/09/2026 | J6: ledger de tokens em produção (PR #8): tabela `token_usage` criada pelo DEV, 1 linha por chamada Gemini — ver `docs/ops/TOKEN-LEDGER.md` (falta confirmar a 1.ª linha real) |
+| 30/09/2026 | Fix do `log_execution`: 4 campos opcionais passam a chegar ao `agent_log` (PR `fix/log-execution-meta`) |
