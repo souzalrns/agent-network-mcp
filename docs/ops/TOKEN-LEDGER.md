@@ -1,6 +1,6 @@
 # Ledger de tokens — `token_usage` (J6)
 
-> **Estado: PENDENTE-DEV.** O código grava uma linha por chamada Gemini, mas a tabela **ainda não existe** no Supabase. Até correres o SQL (passo 1), cada tentativa de escrita falha em silêncio: fica só um `[token_usage] falha ao gravar` no log do Vercel, e a resposta ao utilizador não é afectada.
+> **Estado (2026-09-30): EM PRODUÇÃO.** Passos 1–3 feitos: tabela criada pelo DEV (RLS ligado, verificado por SELECT read-only) e PR #8 merged (deploy de produção às 20:35 UTC). **Falta o passo 4:** às 20:43 UTC a tabela tinha 0 linhas porque ainda não tinha entrado nenhum pedido no deploy novo (logs do Vercel vazios).
 
 ## O que mede
 
