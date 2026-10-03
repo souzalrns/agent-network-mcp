@@ -2,14 +2,18 @@
 -- Executa isto no SQL editor do Supabase (projecto agent-network-memory).
 -- Idempotente: pode correr mais de uma vez sem erro nem duplicar nada.
 -- Passos e verificação: docs/ops/TOKEN-LEDGER.md
+-- Tabela já criada antes do C-2: o `create table if not exists` não muda o CHECK.
+-- Para isso há o ALTER em network-agents-setup:scripts/alter_token_usage_council_kinds.sql
+-- (corrido pelo DEV em produção a 2026-10-03; constraint token_usage_call_kind_check, 7 valores).
 
 create table if not exists public.token_usage (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz not null default now(),
   run_id uuid,                -- 1 por pedido MCP (liga router + agente + embeddings)
   agent_id text,              -- NULL na chamada do router (ainda não há agente)
-  call_kind text not null
-    check (call_kind in ('router', 'agent', 'embed_query', 'embed_doc')),
+  call_kind text not null     -- council_*: Bloco C (network-agents-setup), C-2
+    check (call_kind in ('router', 'agent', 'embed_query', 'embed_doc',
+                         'council_member', 'council_peer', 'council_chairman')),
   model text not null,        -- o pedido, ex.: gemini-flash-lite-latest
   model_version text,         -- o devolvido, ex.: gemini-3.5-flash-lite
   tokens_in integer,          -- usageMetadata.promptTokenCount      (NULL nos embeddings)
