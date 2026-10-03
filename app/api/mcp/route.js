@@ -7,6 +7,7 @@ import {
   logAgentCall,
   getClient,
 } from "../../../lib/memory.js";
+import { INPUT_LIMITS } from "../../../lib/inputLimits.js";
 import { ingestDocument, retrieveKnowledgeHits } from "../../../lib/knowledge.js";
 import { routeRequest, runAgent } from "../../../lib/agentRuntime.js";
 
@@ -63,6 +64,7 @@ const handler = createMcpHandler(
           .object({
             request: z
               .string()
+              .max(INPUT_LIMITS.request)
               .describe("O pedido do utilizador, em linguagem natural."),
           })
           .strict(),
@@ -117,7 +119,7 @@ const handler = createMcpHandler(
         inputSchema: z
           .object({
             agent: z.enum(Object.keys(AGENTS)).describe("ID do agente a chamar."),
-            request: z.string().describe("O pedido a enviar a esse agente."),
+            request: z.string().max(INPUT_LIMITS.request).describe("O pedido a enviar a esse agente."),
           })
           .strict(),
       },
@@ -154,9 +156,11 @@ const handler = createMcpHandler(
               .describe("ID do agente/projeto a que este estado pertence."),
             key: z
               .string()
+              .max(INPUT_LIMITS.key)
               .describe("Chave curta e descritiva (ex: 'pendencias', 'decisao_marca')."),
             value: z
               .string()
+              .max(INPUT_LIMITS.value)
               .describe("O valor a guardar, em texto livre ou JSON serializado."),
           })
           .strict(),
@@ -201,9 +205,11 @@ const handler = createMcpHandler(
               ),
             source: z
               .string()
+              .max(INPUT_LIMITS.source)
               .describe("Nome curto da fonte (ex: 'SKILL.md usucapiao PT-BR')."),
             text: z
               .string()
+              .max(INPUT_LIMITS.text)
               .describe("O conteúdo completo a ingerir, em texto livre."),
           })
           .strict(),
@@ -261,11 +267,12 @@ const handler = createMcpHandler(
           .object({
             kb: z
               .string()
+              .max(INPUT_LIMITS.kb)
               .describe(
                 "Base de conhecimento a pesquisar -- corresponde ao agent_id " +
                   "usado em ingest_knowledge (ou 'global')."
               ),
-            query: z.string().describe("A pergunta ou texto a pesquisar."),
+            query: z.string().max(INPUT_LIMITS.query).describe("A pergunta ou texto a pesquisar."),
             top_k: z
               .number()
               .int()
@@ -350,18 +357,21 @@ const handler = createMcpHandler(
           .object({
             prompt: z
               .string()
+              .max(INPUT_LIMITS.prompt)
               .describe(
                 "Instrução completa e específica para o Claude Code executar. " +
                   "Deve ser autocontida — não há follow-up interativo."
               ),
             project_path: z
               .string()
+              .max(INPUT_LIMITS.project_path)
               .describe(
                 "Caminho absoluto do projeto na máquina do Luiz onde a tarefa " +
                   "deve correr (ex: /Users/luiz/projects/mesaflow-api)."
               ),
             allowed_tools: z
               .string()
+              .max(INPUT_LIMITS.allowed_tools)
               .optional()
               .describe(
                 "Lista de tools permitidas ao Claude Code, separadas por " +
@@ -424,7 +434,7 @@ const handler = createMcpHandler(
           "devolve as tarefas mais recentes (pendentes e concluídas).",
         inputSchema: z
           .object({
-            id: z.string().optional().describe("ID da tarefa (devolvido por dispatch_code_task)."),
+            id: z.string().max(INPUT_LIMITS.id).optional().describe("ID da tarefa (devolvido por dispatch_code_task)."),
           })
           .strict(),
       },
@@ -477,12 +487,15 @@ const handler = createMcpHandler(
           .object({
             agent: z
               .string()
+              .max(INPUT_LIMITS.agent)
               .describe("ID do agente/projeto a que esta execução pertence."),
             demanda_resumo: z
               .string()
+              .max(INPUT_LIMITS.demanda_resumo)
               .describe("Resumo curto da demanda resolvida."),
             capacidade_id: z
-              .array(z.string())
+              .array(z.string().max(INPUT_LIMITS.capacidade_id))
+              .max(INPUT_LIMITS.capacidade_id_items)
               .optional()
               .describe("IDs das Capacidades do catálogo usadas nesta execução."),
             fast_path: z
@@ -496,6 +509,7 @@ const handler = createMcpHandler(
             sucesso: z.boolean().describe("Se a execução foi bem-sucedida."),
             justificativa_full_cycle: z
               .string()
+              .max(INPUT_LIMITS.justificativa_full_cycle)
               .optional()
               .describe(
                 "Se não usou fast path, justificação curta do full cycle."
