@@ -1,5 +1,8 @@
 # Manifesto de ingestão pendente
 
+> **LEGADO (AU-06, D-EP9 = A, 2026-10-03).** A ingestão canónica do RAG é o T6 do `network-agents-setup` (`scripts/ingest_apply.py`). Este manifesto e a tool MCP `ingest_knowledge` / `.github/workflows/ingest.yml` ficam como adaptador legado e não recebem conhecimento novo.
+> Exemplo do que daqui saiu: os 8 chunks "ECC security-reviewer + database-reviewer" que o F0.2 encontrou com `source ILIKE '%security%'`. Registo: `network-agents-setup/docs/initiatives/PENDENCIAS.md`.
+
 Gerado em 06/08/2026. Cada linha = uma chamada à ferramenta MCP
 `ingest_knowledge(agent, source, text)`, onde `text` é o conteúdo do
 arquivo correspondente. Origem: 262 skills/agentes do repositório
