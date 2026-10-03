@@ -25,12 +25,9 @@ jobs:
           path: ~/.cache/pip
           key: transcribe-pip-${{ runner.os }}-v1
 
-      - name: Cache de pacotes apt (ffmpeg)
-        uses: actions/cache@v4
-        id: apt-cache
-        with:
-          path: /var/cache/apt/archives
-          key: transcribe-apt-${{ runner.os }}-v1
+      # S28: sem cache do apt. O actions/cache corre o tar sem root e
+      # /var/cache/apt/archives tem `lock` e `partial/` só do root: o save
+      # falhava sempre ("tar exit code 2"), por isso a cache nunca existiu.
 
       - name: Instalar dependências
         run: |
