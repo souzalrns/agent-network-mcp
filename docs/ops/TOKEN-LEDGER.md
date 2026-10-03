@@ -10,8 +10,9 @@ Uma linha em `public.token_usage` por chamada à API Gemini:
 |---|---|---|---|
 | `router` | `generateContent`, escolhe o agente (`agent_id` NULL) | `lib/agentRuntime.js:88` | `usageMetadata` |
 | `agent` | `generateContent`, resposta do agente | `lib/agentRuntime.js:182` | `usageMetadata` |
-| `embed_query` | `embedContent` da pergunta (RAG) | `lib/knowledge.js:112`, `:231` | NULL (`missing_usage`) |
-| `embed_doc` | `embedContent` de cada pedaço ingerido | `lib/knowledge.js:175` | NULL (`missing_usage`) |
+| `embed_query` | `embedContent` da pergunta (RAG) | `lib/knowledge.js`: `retrieveContextDetailed` e `retrieveKnowledgeHits` | NULL (`missing_usage`) |
+| `embed_doc` | `embedContent` de cada pedaço ingerido | `lib/knowledge.js`: `ingestDocument` | NULL (`missing_usage`) |
+| `council_member`, `council_peer`, `council_chairman` | Chamadas do conselho (Bloco C): independente, peer-rank e síntese | `network-agents-setup`: `runner/plan_runner/council_session.py:86` (não é o MCP) | `usageMetadata` |
 
 - Os campos vêm da resposta Gemini, com o formato confirmado por chamadas reais em 2026-09-30:
   - `tokens_in`, `tokens_out` e `tokens_total` vêm de `promptTokenCount`, `candidatesTokenCount` e `totalTokenCount`;
