@@ -1,5 +1,15 @@
 name: Ingerir conhecimento
 
+# LEGADO / ADAPTADOR (AU-06, decisão D-EP9 = A, 2026-10-03).
+# A pipeline CANÓNICA de ingestão do RAG é o T6 do network-agents-setup
+# (scripts/ingest_apply.py: MANIFEST versionado, content_hash, git_sha,
+# knowledge_sources, project='network-agents-setup').
+# Este workflow fica só para JSON do MCP (ingestion/*.json -> /api/ingest ->
+# lib/knowledge.js ingestDocument): sem knowledge_sources, sem content_hash,
+# chunker próprio (1500 chars) e linhas com project NULL.
+# Conhecimento novo deve entrar pelo T6. Fundir as duas pipelines fica para
+# depois do F1 (registo: network-agents-setup/docs/initiatives/PENDENCIAS.md).
+
 # Dispara automaticamente sempre que um ficheiro novo/alterado aparecer na
 # pasta ingestion/ — não precisas de fazer nada manualmente, isto corre
 # sozinho a seguir a um git push feito pelo Claude ou por ti.
