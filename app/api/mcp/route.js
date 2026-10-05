@@ -259,10 +259,12 @@ const handler = createMcpHandler(
           "devolve os pedacos mais relevantes, estruturados (nao um texto " +
           "unico). Usa isto para consultar o que ja foi ingerido via " +
           "ingest_knowledge, antes de responder com base em memoria. " +
-          "NOTA: nem todos os campos de hit tem dado real hoje -- " +
-          "'metadata' vem sempre null (a tabela nao tem essa coluna), e " +
-          "'citation.locator' vem sempre null (o schema so guarda a fonte, " +
-          "nao a posicao dentro dela).",
+          "Com a proveniencia activa no servidor (KNOWLEDGE_RPC_V2), cada hit traz " +
+          "citation.locator/uri/title e metadata (document_type, status, " +
+          "retrieved_at, jurisdiction, validade), e os filters status, " +
+          "jurisdiction, document_type e valid_at tem efeito; documentos " +
+          "revogados ou expirados ficam de fora por omissao. Sem ela, " +
+          "'metadata' e 'citation.locator' vem null e os filters nao tem efeito.",
         inputSchema: z
           .object({
             kb: z
@@ -288,8 +290,10 @@ const handler = createMcpHandler(
               .record(z.any())
               .optional()
               .describe(
-                "Reservado para filtros futuros -- aceite mas SEM EFEITO na " +
-                  "implementacao actual (matchOnce so filtra por kb)."
+                "Filtros opcionais: status (active por omissao | superseded | " +
+                  "revoked | expired | deleted | any), jurisdiction, document_type, " +
+                  "valid_at (data ISO). So tem efeito com a proveniencia activa no " +
+                  "servidor; chaves ou valores invalidos sao ignorados."
               ),
             require_citations: z
               .boolean()
