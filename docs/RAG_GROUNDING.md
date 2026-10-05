@@ -42,3 +42,19 @@ select nome, status, left(resumo, 80) from tool_evaluations order by updated_at 
 > Se o contexto recuperado não contiver o dado, diz que não tens — **nunca** completes de memória.
 
 Env opcional: `RAG_MIN_SIMILARITY` (default `0.22`).
+
+## Proveniência no retrieve (F3a, opcional)
+
+Env opcional: `KNOWLEDGE_RPC_V2` (por omissão desligada; só liga com `1`).
+
+- **Desligada** (como hoje): o retrieve chama `match_knowledge` com 3 argumentos. Os hits do `retrieve_knowledge` trazem `citation.source`, `citation.locator: null` e `metadata: null`, e os `filters` não têm efeito.
+- **Ligada:** o retrieve chama `match_knowledge_v2`.
+  - Os hits ganham `citation.locator`, `citation.uri`, `citation.title` e `metadata` (`document_type`, `status`, `retrieved_at`, `jurisdiction`, validade, `content_hash`, `final_url`), sem perder nenhum campo antigo.
+  - Os `filters` `status` (`active` por omissão, ou `any`), `jurisdiction`, `document_type` e `valid_at` passam a ter efeito. Chaves e valores inválidos são ignorados (`sanitizeKnowledgeFilters`).
+  - O contexto dos agentes também deixa de incluir documentos revogados ou expirados.
+- **Ordem:**
+  1. o DEV corre a migração `network-agents-setup:scripts/migrations/f3_provenance_retrieve.sql`;
+  2. depois põe `KNOWLEDGE_RPC_V2=1` na Vercel (Production) e faz redeploy.
+  - Se a flag for ligada antes da migração, o MCP não fica sem RAG: a `match_knowledge_v2` dá `PGRST202` (função não encontrada), aparece um aviso no log (`[knowledge] KNOWLEDGE_RPC_V2=1 mas a match_knowledge_v2 nao existe`) e a chamada cai para a `match_knowledge` antiga, sem proveniência.
+  - **Rollback:** tirar a flag e fazer redeploy (sem SQL).
+- O runbook completo está em `network-agents-setup:docs/ops/RAG-CANONICAL.md`, secção F3a.
