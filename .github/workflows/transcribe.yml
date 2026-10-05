@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Cache de pacotes pip
-        uses: actions/cache@v4
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0 (H-003: Node 24, pinado por SHA; era @v4)
         with:
           path: ~/.cache/pip
           key: transcribe-pip-${{ runner.os }}-v1

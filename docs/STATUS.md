@@ -25,12 +25,12 @@ com agentes de projeto que têm **systemPrompt + contexto real de negócio**.
 | Peça | Estado |
 |------|--------|
 | MCP server (Next.js / Vercel) | Em produção |
-| Agentes em `lib/agents.js` | Operacionais (30+) |
+| Agentes em `lib/agents.js` | Operacionais (33) |
 | Memória Supabase + pgvector | Em produção |
 | Router LLM (Gemini Flash Lite) | Em produção |
 | Dashboard / grafo UI | Implementado |
 | Graphify (código) | Instalado; `graphify-out/` **gitignored**; update local |
-| GitHub Actions (heartbeat, etc.) | **Desligado / não integrado** — premissa custo zero |
+| GitHub Actions (heartbeat, etc.) | **Activo, agendado:** `heartbeat.yml` (de 3 em 3 dias) e `audit-tools.yml` (dias 1 e 15). A premissa custo zero mantém-se: o repo é público e os minutos são gratuitos (corrigido a 2026-10-05, H-005) |
 
 ## O que NÃO está aqui
 
@@ -59,3 +59,4 @@ node scripts/document-agents.js
 | 30/09/2026 | Fix das 9 tools MCP (PR #9): recebiam `undefined` desde 27/09 (`024e0ee`); agora `registerTool`; e2e em `tests/e2e/` |
 | 30/09/2026 | J6: ledger de tokens em produção (PR #8): tabela `token_usage` criada pelo DEV, 1 linha por chamada Gemini — ver `docs/ops/TOKEN-LEDGER.md` (falta confirmar a 1.ª linha real) |
 | 30/09/2026 | Fix do `log_execution`: 4 campos opcionais passam a chegar ao `agent_log` (PR `fix/log-execution-meta`) |
+| 05/10/2026 | H-005/H-006 (PENDENCIAS do `network-agents-setup`): as Actions agendadas estão activas, e a linha "desligado" foi corrigida; o README perdeu os links mortos e a nota de TODO; `LICENSE` MIT; `diagnostico-vm.txt` → `docs/ops/diagnostico-vm-2026.txt`; actions pinadas por SHA em versões Node 24 (H-003) |
