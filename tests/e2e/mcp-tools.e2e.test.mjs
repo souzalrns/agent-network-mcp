@@ -113,7 +113,7 @@ const EXPECTED = {
   ask_agent_network: { props: ["request"], required: ["request"] },
   run_specific_agent: { props: ["agent", "request"], required: ["agent", "request"] },
   save_project_state: { props: ["agent", "key", "value"], required: ["agent", "key", "value"] },
-  ingest_knowledge: { props: ["agent", "source", "text"], required: ["agent", "source", "text"] },
+  ingest_knowledge: { props: ["agent", "source", "text", "kb"], required: ["agent", "source", "text"] },
   retrieve_knowledge: {
     props: ["kb", "query", "top_k", "filters", "require_citations"],
     required: ["kb", "query"],
@@ -195,7 +195,7 @@ test("ingest_knowledge: agent, source e text chegam", async () => {
   const out = text(
     await call("ingest_knowledge", { agent: "mesaflow", source: "fonte-e2e", text: "TEXTO-INGEST-789" })
   );
-  assert.ok(out.startsWith("Ingerido para 'mesaflow' (source=fonte-e2e): 1/1 pedaços"), out);
+  assert.ok(out.startsWith("Ingerido para 'mesaflow' (source=fonte-e2e, kb=mesaflow): 1/1 pedaços"), out);
   const c = calls(m);
   const embed = c.find((x) => x.kind === "gemini" && x.url.includes(":embedContent"));
   assert.equal(embed.body.content.parts[0].text, "TEXTO-INGEST-789");
@@ -204,6 +204,21 @@ test("ingest_knowledge: agent, source e text chegam", async () => {
   const ins = c.find((x) => x.path === "knowledge_chunks" && x.method === "POST");
   assert.equal(ins.body.content, "TEXTO-INGEST-789");
   assert.equal(ins.body.agent_id, "mesaflow");
+  assert.equal(ins.body.kb, "mesaflow"); // R-005 / P-20
+});
+
+test("ingest_knowledge: kb explícito chega ao insert; kb inválido é recusado", async () => {
+  const m = mark();
+  const out = text(
+    await call("ingest_knowledge", { agent: "revisor-codigo", source: "fonte-sec", text: "T", kb: "security" })
+  );
+  assert.ok(out.includes("kb=security"), out);
+  const ins = calls(m).find((x) => x.path === "knowledge_chunks" && x.method === "POST");
+  assert.equal(ins.body.kb, "security");
+  assert.equal(ins.body.agent_id, "revisor-codigo");
+  const n = mark();
+  assert.ok(rejected(await call("ingest_knowledge", { agent: "mesaflow", source: "f", text: "T", kb: "Not Valid" })));
+  assert.equal(calls(n).filter((x) => x.path === "knowledge_chunks").length, 0);
 });
 
 test("retrieve_knowledge: kb, query e top_k chegam", async () => {

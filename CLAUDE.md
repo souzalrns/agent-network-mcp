@@ -48,6 +48,16 @@ Após adicionar/renomear agentes em `lib/agents.js`, regenerar o catálogo.
 - Não reativar workflows GitHub Actions que consumam minutos em repos privados sem decisão explícita.
 - Alterações ao router e tools MCP: verificar impacto no Claude.ai connector.
 
+## Decisões e opções (regra do maestro, 2026-10-07)
+
+**Toda a apresentação de opções vem com recomendação explícita. SEM EXCEPÇÃO.**
+Formato: A/B/C + recomendação + razão curta. Se não houver recomendação, a decisão não está pronta.
+
+- Vale para relatórios, PRs, a §10 do `PENDENCIAS.md` (network-agents-setup) e qualquer lista de decisões, curta ou longa.
+- Marcar a escolhida como **RECOMENDADA**, com a evidência (ficheiro:linha, SELECT, teste, run) que a sustenta.
+- Motivo da regra: numa sessão, foram listadas 11 decisões sem recomendação explícita, o que violou a regra do maestro.
+- Quem decide é o maestro; o Claude propõe e nunca assume uma decisão pendente como tomada.
+
 ## Onde está o resto
 
 | Precisas de… | Vai a… |

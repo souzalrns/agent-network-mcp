@@ -59,3 +59,31 @@ test("as linhas inseridas não levam project (ficam NULL, do MCP)", async () => 
   assert.equal(row.source, "docs/menu.md");
   assert.equal("project" in row, false);
 });
+
+// R-005 / P-20: a coluna kb tem DEFAULT 'marketing' em produção; sem kb explícito
+// no insert, tudo o que o MCP ingeria ficava classificado como marketing.
+test("cada linha leva kb explícito, por omissão o próprio agent_id", async () => {
+  const result = await ingestDocument(getClient(), "revisor-codigo", "docs/x.md", "texto curto");
+  assert.equal(result.kb, "revisor-codigo");
+  const row = JSON.parse(chunkCalls("POST")[0].body);
+  assert.equal(row.kb, "revisor-codigo");
+  assert.equal(row.agent_id, "revisor-codigo");
+});
+
+test("options.kb classifica por área sem mudar o agent_id", async () => {
+  await ingestDocument(getClient(), "revisor-codigo", "ECC security-reviewer", "texto curto", { kb: "security" });
+  const row = JSON.parse(chunkCalls("POST")[0].body);
+  assert.equal(row.kb, "security");
+  assert.equal(row.agent_id, "revisor-codigo");
+});
+
+test("kb inválido falha antes de apagar ou inserir", async () => {
+  for (const kb of ["", "Marketing", "a b", "x".repeat(41), "../x", 7]) {
+    calls.length = 0;
+    await assert.rejects(
+      ingestDocument(getClient(), "mesaflow", "docs/menu.md", "texto curto", { kb }),
+      /kb inválido/
+    );
+    assert.equal(calls.length, 0, `kb=${JSON.stringify(kb)} chegou ao Supabase`);
+  }
+});
