@@ -4,3 +4,8 @@ node_modules/
 .env.local
 .vercel
 graphify-out/
+
+# Conteúdo de terceiros (transcrições de vídeos públicos): vive no Supabase
+# (tabela public.transcripts), nunca no git. Política: network-agents-setup
+# docs/governance/PRIVACY-POLICY.md §2 (repo público sem dados de terceiros).
+/transcripts/

@@ -31,6 +31,12 @@ Gerir ~10 negócios em simultâneo significa contexto técnico e de domínio dis
 - **Base de dados:** Supabase (PostgreSQL + extensão pgvector para busca semântica)
 - **Automação:** GitHub Actions (transcrição de vídeo, scraping, heartbeat)
 
+## Dados e privacidade
+
+- **Transcrições vivem no Supabase, não no git.** O workflow `transcribe.yml` grava cada transcrição na tabela `public.transcripts`. A pasta `transcripts/` está no `.gitignore`.
+- **O repo público não tem conteúdo de terceiros.** Também não tem dados de clientes nem segredos: as chaves só existem como variáveis de ambiente (Vercel, GitHub Actions).
+- Política de privacidade (LGPD + GDPR), inventário de dados e separação repo público/privado: [`network-agents-setup/docs/governance/PRIVACY-POLICY.md`](https://github.com/souzalrns/network-agents-setup/blob/main/docs/governance/PRIVACY-POLICY.md).
+
 ## Destaques Técnicos
 
 1. **Custo zero por desenho, não por sorte:** todo o roteamento corre em Gemini Flash Lite gratuito — a arquitetura foi pensada desde o início para nunca depender de créditos pagos para operação normal.
