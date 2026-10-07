@@ -8,7 +8,7 @@ import {
   getClient,
 } from "../../../lib/memory.js";
 import { INPUT_LIMITS } from "../../../lib/inputLimits.js";
-import { ingestDocument, retrieveKnowledgeHits } from "../../../lib/knowledge.js";
+import { KB_PATTERN, ingestDocument, retrieveKnowledgeHits } from "../../../lib/knowledge.js";
 import { routeRequest, runAgent } from "../../../lib/agentRuntime.js";
 
 // S12/A14: todos os schemas abaixo são passados como z.object({...}).strict()
@@ -194,7 +194,8 @@ const handler = createMcpHandler(
           "(Gemini) e guarda em knowledge_chunks. Substitui chunks anteriores " +
           "com a mesma source para o mesmo agente. NÃO alimenta tool_evaluations " +
           "(radar-ferramentas); para tools usa a tabela tool_evaluations. " +
-          "Usa agent='global' para conhecimento visível a todos.",
+          "Usa agent='global' para conhecimento visível a todos. Cada pedaço " +
+          "fica com kb = agent, salvo se passares outro kb.",
         inputSchema: z
           .object({
             agent: z
@@ -211,10 +212,20 @@ const handler = createMcpHandler(
               .string()
               .max(INPUT_LIMITS.text)
               .describe("O conteúdo completo a ingerir, em texto livre."),
+            // R-005 / P-20: sem kb explícito o DEFAULT da coluna gravava 'marketing'.
+            kb: z
+              .string()
+              .max(INPUT_LIMITS.kb)
+              .regex(KB_PATTERN)
+              .optional()
+              .describe(
+                "Base de conhecimento (coluna kb) dos pedaços. Por omissão: o " +
+                  "próprio agent. Só para classificar por área, ex.: 'security'."
+              ),
           })
           .strict(),
       },
-      async ({ agent, source, text }) => {
+      async ({ agent, source, text, kb }) => {
         const supabase = getClient();
         if (!supabase) {
           return {
@@ -226,13 +237,14 @@ const handler = createMcpHandler(
         try {
           const result = await ingestDocument(supabase, agent, source, text, {
             runId: randomUUID(),
+            kb,
           });
           return {
             content: [
               {
                 type: "text",
                 text:
-                  `Ingerido para '${agent}' (source=${source}): ` +
+                  `Ingerido para '${agent}' (source=${source}, kb=${result.kb}): ` +
                   `${result.inserted}/${result.total} pedaços; ` +
                   `apagados anteriores=${result.deleted ?? 0}` +
                   (result.errors.length ? `. Erros: ${result.errors.join("; ")}` : ".") +
