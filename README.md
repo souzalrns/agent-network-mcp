@@ -34,6 +34,7 @@ Gerir ~10 negócios em simultâneo significa contexto técnico e de domínio dis
 ## Dados e privacidade
 
 - **Transcrições vivem no Supabase, não no git.** O workflow `transcribe.yml` grava cada transcrição na tabela `public.transcripts`. A pasta `transcripts/` está no `.gitignore`.
+- **Retenção: 60 dias desde a criação.** Um job diário do `pg_cron` (`purge-expired-transcripts`, 03:17 UTC) apaga as transcrições expiradas. Para voltar a ter uma, transcreve-se o link outra vez. SQL: [`memory/transcripts_retention.sql`](./memory/transcripts_retention.sql).
 - **O repo público não tem conteúdo de terceiros.** Também não tem dados de clientes nem segredos: as chaves só existem como variáveis de ambiente (Vercel, GitHub Actions).
 - Política de privacidade (LGPD + GDPR), inventário de dados e separação repo público/privado: [`network-agents-setup/docs/governance/PRIVACY-POLICY.md`](https://github.com/souzalrns/network-agents-setup/blob/main/docs/governance/PRIVACY-POLICY.md).
 
