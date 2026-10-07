@@ -6,7 +6,12 @@
 --                   ("se for o caso transcrevemos novamente");
 --   image_posts  -> 60 dias (posts de terceiros no Instagram);
 --   scrapes      -> opção B: 60 dias por omissão; 12 meses quando o site é teu
---                   (domínios em public.retention_own_domains).
+--                   (domínios em public.retention_own_domains);
+--   token_usage  -> 24 meses desde a criação (P-41: análise anual e auditoria
+--                   ISO/IEC 42001, mas não eterno). Só contagens, sem conteúdo.
+--
+-- Também fica versionada aqui a limpeza que já corria em produção sem estar no git:
+--   agent_log    -> 90 dias (cleanup_old_agent_logs, job cleanup-agent-logs-daily, 03:00).
 --
 -- Só apaga LINHAS destas tabelas, que são cópias extraídas. Nunca toca nos sites,
 -- nos vídeos nem nos posts de origem, nem nos ficheiros do Storage (as capturas
@@ -22,7 +27,8 @@
 --
 -- Aplicar: o DEV, no SQL Editor do Supabase (escreve em produção). Na 1.ª execução,
 -- o job apaga o que já passou do prazo (2026-10-07: 35 transcripts e as 9 linhas de
--- image_posts; os 2 scrapes são de viannalegal.com.br e ficam 12 meses).
+-- image_posts; os 2 scrapes são de viannalegal.com.br e ficam 12 meses; token_usage
+-- começa a 2026-10-05, por isso nada sai antes de 2028-10).
 
 -- 0. Os teus domínios: os scrapes destes sites (e subdomínios) ficam 12 meses.
 --    Para acrescentar um site: insert into public.retention_own_domains values ('exemplo.com');
@@ -82,7 +88,10 @@ drop trigger if exists scrapes_set_expires_at on public.scrapes;
 create trigger scrapes_set_expires_at before insert or update of url on public.scrapes
   for each row execute function public.scrapes_set_expires_at();
 
--- 2. Purga: apaga o que expirou nas 3 tabelas e diz quantas linhas saíram.
+-- token_usage: 24 meses por idade (sem coluna nova: o prazo é igual para todas as
+-- linhas, e o índice idx_token_usage_created_at já existe).
+
+-- 2. Purga: apaga o que expirou nas 4 tabelas e diz quantas linhas saíram.
 drop function if exists public.purge_expired_transcripts();  -- nome da 1.ª versão (nunca aplicada)
 create or replace function public.purge_expired_content()
 returns json
@@ -91,22 +100,36 @@ security definer
 set search_path = public
 as $$
 declare
-  n_t integer; n_i integer; n_s integer;
+  n_t integer; n_i integer; n_s integer; n_u integer;
 begin
   delete from public.transcripts where expires_at < now(); get diagnostics n_t = row_count;
   delete from public.image_posts where expires_at < now(); get diagnostics n_i = row_count;
   delete from public.scrapes     where expires_at < now(); get diagnostics n_s = row_count;
-  return json_build_object('transcripts', n_t, 'image_posts', n_i, 'scrapes', n_s);
+  delete from public.token_usage where created_at < now() - interval '24 months'; get diagnostics n_u = row_count;
+  return json_build_object('transcripts', n_t, 'image_posts', n_i, 'scrapes', n_s, 'token_usage', n_u);
 end;
+$$;
+
+-- agent_log: a função que já corria em produção (90 dias), agora versionada. Mesmo
+-- corpo; o job cleanup-agent-logs-daily (03:00) já existe e não é tocado.
+create or replace function public.cleanup_old_agent_logs()
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  delete from public.agent_log where created_at < now() - interval '90 days';
 $$;
 
 -- Só o dono (postgres) e o service_role as correm; nunca a API pública.
 revoke all on function public.purge_expired_content() from public;
+revoke all on function public.cleanup_old_agent_logs() from public;
 revoke all on function public.scrape_expires_at(text, timestamptz) from public;
 do $$
 begin
   if exists (select 1 from pg_roles where rolname = 'anon') then
     execute 'revoke all on function public.purge_expired_content() from anon, authenticated';
+    execute 'revoke all on function public.cleanup_old_agent_logs() from anon, authenticated';
     execute 'revoke all on function public.scrape_expires_at(text, timestamptz) from anon, authenticated';
   end if;
 end;

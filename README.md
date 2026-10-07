@@ -34,9 +34,11 @@ Gerir ~10 negócios em simultâneo significa contexto técnico e de domínio dis
 ## Dados e privacidade
 
 - **Transcrições vivem no Supabase, não no git.** O workflow `transcribe.yml` grava cada transcrição na tabela `public.transcripts`. A pasta `transcripts/` está no `.gitignore`.
-- **Retenção por data** (job diário do `pg_cron` `purge-expired-content`, 03:17 UTC):
+- **Retenção por data** (jobs diários do `pg_cron`; `purge-expired-content` às 03:17 UTC):
   - `transcripts` e `image_posts` (conteúdo de terceiros): **60 dias desde a criação**;
   - `scrapes`: **60 dias**, ou **12 meses** se o site for teu (domínios em `public.retention_own_domains`; hoje `viannalegal.com.br`).
+  - `token_usage` (só contagens de tokens): **24 meses** (análise anual e auditoria);
+  - `agent_log`: **90 dias** (job `cleanup-agent-logs-daily`, 03:00, que já existia).
 
   Só apaga as cópias extraídas, nunca os sites nem as publicações de origem. Para voltar a ter uma, extrai-se o link outra vez. SQL: [`memory/retention.sql`](./memory/retention.sql).
 - **O repo público não tem conteúdo de terceiros.** Também não tem dados de clientes nem segredos: as chaves só existem como variáveis de ambiente (Vercel, GitHub Actions).
