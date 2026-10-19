@@ -3,21 +3,38 @@ name: Manter Supabase ativo
 # Corre automaticamente a cada 3 dias — o Supabase pausa projetos
 # gratuitos após 7 dias sem atividade, por isso 3 dias dá margem de
 # segurança confortável, sem precisares de fazer nada manualmente.
+#
+# Mantém dois projetos:
+# - agent-network-memory (este repo), via /api/heartbeat;
+# - vianna-gestao, via /api/cron/keepalive. Segunda linha de defesa: o
+#   vianna-gestao também tem um Vercel Cron diário, mas pausou duas vezes
+#   sem ninguém dar por isso (o cron semanal falhava em silêncio).
+#
+# Cada passo FALHA se o ping falhar: o GitHub manda email ao dono do
+# workflow quando um agendamento falha, em vez de a falha passar em silêncio.
 
 on:
   schedule:
     - cron: "0 9 */3 * *" # às 9h UTC, a cada 3 dias
   workflow_dispatch: {} # também dá para correr manualmente no separador Actions
 
+permissions: {}
+
 jobs:
   heartbeat:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - name: Pingar o endpoint de heartbeat
+      - name: Pingar o agent-network-memory
         env:
           INGEST_URL: ${{ secrets.INGEST_URL }}
         run: |
           BASE_URL="${INGEST_URL%/api/ingest}"
-          curl -sf "$BASE_URL/api/heartbeat" \
-            && echo "Heartbeat OK — Supabase mantido ativo" \
-            || echo "Heartbeat falhou — verificar manualmente"
+          curl -sSf --retry 3 --retry-delay 20 "$BASE_URL/api/heartbeat"
+          echo "Heartbeat OK — agent-network-memory mantido ativo"
+
+      - name: Pingar o vianna-gestao
+        if: always()
+        run: |
+          curl -sSf --retry 3 --retry-delay 20 "https://vianna-gestao.vercel.app/api/cron/keepalive"
+          echo "Keepalive OK — vianna-gestao mantido ativo"

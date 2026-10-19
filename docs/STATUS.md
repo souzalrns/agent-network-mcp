@@ -25,7 +25,7 @@ com agentes de projeto que têm **systemPrompt + contexto real de negócio**.
 | Peça | Estado |
 |------|--------|
 | MCP server (Next.js / Vercel) | Em produção |
-| Agentes em `lib/agents.js` | Operacionais (33) |
+| Agentes em `lib/agents.js` | Operacionais (34; `vianna-gestao` entrou a 19/10/2026) |
 | Memória Supabase + pgvector | Em produção |
 | Router LLM (Gemini Flash Lite) | Em produção |
 | Dashboard / grafo UI | Implementado |
