@@ -50,6 +50,8 @@ jobs:
           # PyAV 19 -> TypeError (reproduzido a 21/10/2026; av 15-18 aceitam).
           pip install -q --upgrade yt-dlp faster-whisper requests "av>=15,<19"
           pip list 2>/dev/null | grep -i -E "^(av|faster-whisper|yt-dlp) "
+          # deno: o yt-dlp precisa de um runtime JS para resolver os desafios do YouTube
+          npm install -g deno >/dev/null 2>&1 && deno --version | head -1 || echo "deno indisponivel"
 
       - name: Baixar, transcrever e gravar no Supabase
         env:
