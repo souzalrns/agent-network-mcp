@@ -46,7 +46,10 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y ffmpeg
-          pip install -q --upgrade yt-dlp faster-whisper requests
+          # "av>=15": o faster-whisper usa av.open(metadata_errors=...), que só existe
+          # em versões recentes do PyAV; com av antigo falha com TypeError (visto em 21/10/2026).
+          pip install -q --upgrade yt-dlp faster-whisper requests "av>=15"
+          pip list 2>/dev/null | grep -i -E "^(av|faster-whisper|yt-dlp) "
 
       - name: Baixar, transcrever e gravar no Supabase
         env:
