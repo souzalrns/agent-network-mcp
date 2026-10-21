@@ -95,24 +95,30 @@ jobs:
               resp.raise_for_status()
               return resp.json()
 
-          def fail(msg, meta=None):
+          def fail(msg, meta=None, code=1):
               """Grava o erro em transcripts e termina o job com falha visível."""
               meta = meta or {}
-              msg = (msg or "erro desconhecido").strip()[-1500:]
+              msg = (msg or "erro desconhecido").replace("\x00", "").strip()[-1500:]
               print(f"FALHOU: {msg}")
+              base = {"url": url, "platform": platform, "transcript": "", "status": "failed"}
               try:
-                  save_row({
-                      "url": url,
-                      "platform": platform,
-                      "title": meta.get("title", ""),
-                      "uploader": meta.get("uploader", ""),
-                      "transcript": "",
-                      "status": "failed",
-                      "error": msg,
-                  })
+                  save_row({**base, "title": meta.get("title", ""),
+                            "uploader": meta.get("uploader", ""), "error": msg})
               except Exception as e:
-                  print(f"(não consegui gravar o erro no Supabase: {e})")
-              sys.exit(1)
+                  print(f"(1.ª gravação do erro falhou: {e})")
+                  try:  # 2.ª tentativa: texto simples, curto, sem caracteres exóticos
+                      simple = msg.encode("ascii", "ignore").decode()[-500:]
+                      save_row({**base, "error": f"{simple} || gravacao falhou: {str(e)[:300]}"})
+                  except Exception as e2:
+                      print(f"(2.ª gravação do erro falhou: {e2})")
+              sys.stdout.flush()
+              os._exit(code)
+
+          def _uncaught(exc_type, exc, tb):
+              import traceback
+              fail("EXCECAO NAO TRATADA:\n" + "".join(traceback.format_exception(exc_type, exc, tb)))
+
+          sys.excepthook = _uncaught
 
           def run(cmd, timeout):
               try:
