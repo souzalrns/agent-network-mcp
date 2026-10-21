@@ -115,7 +115,12 @@ jobs:
               sys.exit(1)
 
           def run(cmd, timeout):
-              return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+              try:
+                  return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+              except subprocess.TimeoutExpired as e:
+                  out = e.stderr.decode() if isinstance(e.stderr, bytes) else (e.stderr or "")
+                  return subprocess.CompletedProcess(
+                      cmd, 124, "", f"TIMEOUT após {timeout}s\n{out}")
 
           # ---- 1. Cache por URL ------------------------------------------------
           if not force:
