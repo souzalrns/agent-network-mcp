@@ -2,9 +2,17 @@ name: Transcrever vídeo/reel
 
 # Dispara manualmente (ou via API) passando uma URL de vídeo — YouTube,
 # Instagram, TikTok, Twitter/X, Facebook e +1800 sites suportados pelo
-# yt-dlp. Baixa só o áudio, transcreve com faster-whisper (modelo "base",
-# roda em CPU) e grava o resultado na tabela public.transcripts do Supabase
+# yt-dlp. Grava o resultado na tabela public.transcripts do Supabase
 # (projeto agent-network-memory) — histórico acumulado, custo zero.
+#
+# v2 (melhorias inspiradas em clipscribe, ytxt, media-mcp e watch):
+#  - cache por URL: se já foi transcrito com sucesso, não repete (force=true ignora)
+#  - YouTube e outros: usa legendas existentes quando há (mais rápido e exato)
+#  - fallback para faster-whisper (modelo "base", CPU) quando não há legendas
+#  - download com 3 tentativas e espera crescente
+#  - NUNCA falha em silêncio: erro gravado em transcripts (status='failed', error=...)
+#  - limite de duração (30 min) para não estourar o job
+#  - cookies opcionais via secret YT_COOKIES_TXT (formato Netscape); sem o secret, ignora
 
 on:
   workflow_dispatch:
@@ -13,11 +21,16 @@ on:
         description: "URL do vídeo/reel/post a transcrever"
         required: true
         type: string
+      force:
+        description: "Transcrever de novo mesmo que já exista no histórico"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   transcribe:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Cache de pacotes pip
         uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0 (H-003: Node 24, pinado por SHA; era @v4)
@@ -38,29 +51,27 @@ jobs:
       - name: Baixar, transcrever e gravar no Supabase
         env:
           VIDEO_URL: ${{ inputs.url }}
+          FORCE: ${{ inputs.force }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          YT_COOKIES_TXT: ${{ secrets.YT_COOKIES_TXT }}
         run: |
           python3 << 'PYEOF'
-          import json, os, subprocess, requests
-          from faster_whisper import WhisperModel
+          import glob, json, os, re, subprocess, sys, time
           from urllib.parse import urlparse
+          import requests
 
-          url = os.environ["VIDEO_URL"]
+          url = os.environ["VIDEO_URL"].strip()
+          force = os.environ.get("FORCE", "false").lower() == "true"
+          supabase_url = os.environ["SUPABASE_URL"].rstrip("/")
+          key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+          MAX_SECONDS = 30 * 60
 
-          def yt_field(field):
-              try:
-                  out = subprocess.run(
-                      ["yt-dlp", "--skip-download", "--print", f"%({field})s", url],
-                      capture_output=True, text=True, timeout=60
-                  )
-                  return out.stdout.strip()
-              except Exception:
-                  return ""
-
-          title = yt_field("title")
-          uploader = yt_field("uploader")
-          description = yt_field("description")
+          sb_headers = {
+              "apikey": key,
+              "Authorization": f"Bearer {key}",
+              "Content-Type": "application/json",
+          }
 
           host = urlparse(url).netloc.lower()
           if "instagram" in host:
@@ -69,58 +80,169 @@ jobs:
               platform = "youtube"
           elif "tiktok" in host:
               platform = "tiktok"
-          elif "twitter" in host or host == "x.com":
+          elif "twitter" in host or host == "x.com" or host.endswith(".x.com"):
               platform = "twitter"
           else:
               platform = host or "desconhecido"
 
-          subprocess.run(
-              ["yt-dlp", "-x", "--audio-format", "mp3", "--audio-quality", "5",
-               "-o", "audio.%(ext)s", url],
-              check=True, timeout=300
-          )
+          def save_row(row):
+              resp = requests.post(
+                  f"{supabase_url}/rest/v1/transcripts",
+                  headers={**sb_headers, "Prefer": "return=representation"},
+                  data=json.dumps(row),
+                  timeout=30,
+              )
+              resp.raise_for_status()
+              return resp.json()
 
-          model = WhisperModel("base", device="cpu", compute_type="int8")
-          segments, info = model.transcribe("audio.mp3", language=None, vad_filter=True)
-          transcript = " ".join(seg.text.strip() for seg in segments)
+          def fail(msg, meta=None):
+              """Grava o erro em transcripts e termina o job com falha visível."""
+              meta = meta or {}
+              msg = (msg or "erro desconhecido").strip()[-1500:]
+              print(f"FALHOU: {msg}")
+              try:
+                  save_row({
+                      "url": url,
+                      "platform": platform,
+                      "title": meta.get("title", ""),
+                      "uploader": meta.get("uploader", ""),
+                      "transcript": "",
+                      "status": "failed",
+                      "error": msg,
+                  })
+              except Exception as e:
+                  print(f"(não consegui gravar o erro no Supabase: {e})")
+              sys.exit(1)
 
+          def run(cmd, timeout):
+              return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+
+          # ---- 1. Cache por URL ------------------------------------------------
+          if not force:
+              r = requests.get(
+                  f"{supabase_url}/rest/v1/transcripts",
+                  headers=sb_headers,
+                  params={"url": f"eq.{url}", "status": "eq.ok",
+                          "select": "id,created_at,source", "limit": "1"},
+                  timeout=30,
+              )
+              if r.ok and r.json():
+                  print("Já transcrito anteriormente — nada a fazer (use force=true para repetir):")
+                  print(json.dumps(r.json()[0], ensure_ascii=False))
+                  sys.exit(0)
+
+          # ---- 2. Opções comuns do yt-dlp (cookies opcionais) -----------------
+          common = ["yt-dlp", "--no-playlist", "--socket-timeout", "30"]
+          cookies = os.environ.get("YT_COOKIES_TXT", "").strip()
+          if cookies:
+              with open("cookies.txt", "w") as f:
+                  f.write(cookies + "\n")
+              common += ["--cookies", "cookies.txt"]
+              print("Cookies carregados do secret YT_COOKIES_TXT.")
+
+          # ---- 3. Metadados (uma chamada, com erro visível) -------------------
+          meta_proc = run(common + ["--skip-download", "--dump-single-json", url], 90)
+          if meta_proc.returncode != 0:
+              err = meta_proc.stderr
+              if platform == "instagram" and ("login" in err.lower() or "rate-limit" in err.lower()
+                                              or "empty media" in err.lower()):
+                  err += "\n[dica] Instagram bloqueia IPs de datacenter sem sessão; configure o secret YT_COOKIES_TXT ou use outra via de download."
+              fail(f"yt-dlp não conseguiu ler o vídeo:\n{err}")
+          info_json = json.loads(meta_proc.stdout)
+          meta = {
+              "title": info_json.get("title") or "",
+              "uploader": info_json.get("uploader") or "",
+              "description": info_json.get("description") or "",
+          }
+          duration = info_json.get("duration") or 0
+          print(f"Título: {meta['title'][:80]} | duração: {duration}s")
+          if duration and duration > MAX_SECONDS:
+              fail(f"Vídeo com {int(duration)//60} min excede o limite de {MAX_SECONDS//60} min.", meta)
+
+          transcript = ""
+          source = None
+          language = None
+          language_probability = None
+
+          # ---- 4. Legendas existentes (rápido) --------------------------------
+          if platform != "instagram":
+              try:
+                  run(common + ["--skip-download", "--write-subs", "--write-auto-subs",
+                                "--sub-langs", "pt.*,en.*,es.*", "--sub-format", "vtt",
+                                "--ignore-errors", "-o", "subs.%(ext)s", url], 120)
+              except Exception as e:
+                  print(f"(legendas indisponíveis: {e})")
+              vtts = sorted(glob.glob("subs*.vtt"))
+              if vtts:
+                  lines, last = [], None
+                  for raw in open(vtts[0], encoding="utf-8", errors="ignore"):
+                      line = raw.strip()
+                      if (not line or line.startswith(("WEBVTT", "Kind:", "Language:", "NOTE"))
+                              or "-->" in line or line.isdigit()):
+                          continue
+                      line = re.sub(r"<[^>]+>", "", line).strip()
+                      if line and line != last:
+                          lines.append(line)
+                          last = line
+                  text = " ".join(lines).strip()
+                  if len(text) > 40:
+                      transcript = text
+                      source = "captions"
+                      m = re.match(r"subs\.([A-Za-z-]+)\.vtt", os.path.basename(vtts[0]))
+                      language = m.group(1) if m else None
+                      print(f"Legendas encontradas ({vtts[0]}) — Whisper dispensado.")
+
+          # ---- 5. Fallback: áudio + faster-whisper ----------------------------
+          if not transcript:
+              last_err = ""
+              for attempt in range(1, 4):
+                  for old in glob.glob("audio.*"):
+                      os.remove(old)
+                  p = run(common + ["-x", "--audio-format", "mp3", "--audio-quality", "5",
+                                    "-o", "audio.%(ext)s", url], 300)
+                  if p.returncode == 0 and os.path.exists("audio.mp3"):
+                      break
+                  last_err = p.stderr
+                  print(f"Download falhou (tentativa {attempt}/3): {last_err.strip()[-200:]}")
+                  time.sleep(5 * attempt)
+              else:
+                  hint = ""
+                  if platform == "instagram":
+                      hint = "\n[dica] Instagram costuma bloquear IPs de datacenter; configure YT_COOKIES_TXT."
+                  fail(f"Download do áudio falhou após 3 tentativas:\n{last_err}{hint}", meta)
+
+              from faster_whisper import WhisperModel
+              model = WhisperModel("base", device="cpu", compute_type="int8")
+              segments, info = model.transcribe("audio.mp3", language=None, vad_filter=True)
+              transcript = " ".join(seg.text.strip() for seg in segments).strip()
+              source = "whisper"
+              language = info.language
+              language_probability = round(info.language_probability, 3)
+              if not transcript:
+                  fail("Transcrição vazia (vídeo sem fala detetável?).", meta)
+
+          # ---- 6. Gravar -------------------------------------------------------
           row = {
               "url": url,
               "platform": platform,
-              "title": title,
-              "uploader": uploader,
-              "description": description,
-              "language": info.language,
-              "language_probability": round(info.language_probability, 3),
+              "title": meta["title"],
+              "uploader": meta["uploader"],
+              "description": meta["description"],
+              "language": language,
+              "language_probability": language_probability,
               "transcript": transcript,
+              "status": "ok",
+              "source": source,
           }
+          saved = save_row(row)
+          print(f"Gravado no Supabase com sucesso (fonte: {source}, {len(transcript)} caracteres).")
+          print(json.dumps([{k: v for k, v in saved[0].items() if k != "transcript"}],
+                           ensure_ascii=False, indent=2))
 
-          supabase_url = os.environ["SUPABASE_URL"].rstrip("/")
-          key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
-
-          resp = requests.post(
-              f"{supabase_url}/rest/v1/transcripts",
-              headers={
-                  "apikey": key,
-                  "Authorization": f"Bearer {key}",
-                  "Content-Type": "application/json",
-                  "Prefer": "return=representation",
-              },
-              data=json.dumps(row),
-              timeout=30,
-          )
-          resp.raise_for_status()
-          print("Gravado no Supabase com sucesso:")
-          print(json.dumps(resp.json(), ensure_ascii=False, indent=2))
-
-          # Verifica consumo de espaço e apaga os mais antigos se ultrapassar 70% do limite free tier
+          # Limpeza automática: apaga os mais antigos se ultrapassar 70% do limite free tier
           cleanup_resp = requests.post(
               f"{supabase_url}/rest/v1/rpc/cleanup_old_transcripts_if_needed",
-              headers={
-                  "apikey": key,
-                  "Authorization": f"Bearer {key}",
-                  "Content-Type": "application/json",
-              },
+              headers=sb_headers,
               data="{}",
               timeout=30,
           )
