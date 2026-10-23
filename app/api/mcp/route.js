@@ -605,6 +605,13 @@ async function withAuth(request) {
   if (!match || !constantTimeEqual(match[1], expected)) {
     return unauthorized();
   }
+  // F0.6: um pedido que chegou por /api/mcp/k/<chave> (reescrito pelo proxy.js)
+  // ainda traz o caminho original; o mcp-handler só responde em /api/mcp.
+  const url = new URL(request.url);
+  if (url.pathname !== "/api/mcp") {
+    url.pathname = "/api/mcp";
+    return innerHandler(new Request(url, request));
+  }
   return innerHandler(request);
 }
 
