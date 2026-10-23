@@ -275,7 +275,9 @@ const handler = createMcpHandler(
           "citation.locator/uri/title e metadata (document_type, status, " +
           "retrieved_at, jurisdiction, validade), e os filters status, " +
           "jurisdiction, document_type e valid_at tem efeito; documentos " +
-          "revogados ou expirados ficam de fora por omissao. Sem ela, " +
+          "revogados ou expirados ficam de fora por omissao. Com a autoridade " +
+          "activa (KNOWLEDGE_RPC_V3), o metadata traz authority (oficial > curado > " +
+          "experimental) e superseded_by. Sem proveniencia, " +
           "'metadata' e 'citation.locator' vem null e os filters nao tem efeito.",
         inputSchema: z
           .object({
@@ -304,8 +306,10 @@ const handler = createMcpHandler(
               .describe(
                 "Filtros opcionais: status (active por omissao | superseded | " +
                   "revoked | expired | deleted | any), jurisdiction, document_type, " +
-                  "valid_at (data ISO). So tem efeito com a proveniencia activa no " +
-                  "servidor; chaves ou valores invalidos sao ignorados."
+                  "valid_at (data ISO), min_authority (oficial | curado | " +
+                  "experimental). So tem efeito com a proveniencia activa no " +
+                  "servidor; chaves ou valores invalidos sao ignorados. min_authority " +
+                  "sem a autoridade activa (KNOWLEDGE_RPC_V3) devolve zero hits."
               ),
             require_citations: z
               .boolean()

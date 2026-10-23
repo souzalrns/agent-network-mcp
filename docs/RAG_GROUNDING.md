@@ -55,6 +55,23 @@ Env opcional: `KNOWLEDGE_RPC_V2` (por omissão desligada; só liga com `1`).
 - **Ordem:**
   1. o DEV corre a migração `network-agents-setup:scripts/migrations/f3_provenance_retrieve.sql`;
   2. depois põe `KNOWLEDGE_RPC_V2=1` na Vercel (Production) e faz redeploy.
-  - Se a flag for ligada antes da migração, o MCP não fica sem RAG: a `match_knowledge_v2` dá `PGRST202` (função não encontrada), aparece um aviso no log (`[knowledge] KNOWLEDGE_RPC_V2=1 mas a match_knowledge_v2 nao existe`) e a chamada cai para a `match_knowledge` antiga, sem proveniência.
+  - Se a flag for ligada antes da migração, o MCP não fica sem RAG: a `match_knowledge_v2` dá `PGRST202` (função não encontrada), aparece um aviso no log (`[knowledge] match_knowledge_v2 nao existe (correr …f3_provenance_retrieve.sql); a usar match_knowledge.`) e a chamada cai para a `match_knowledge` antiga, sem proveniência.
   - **Rollback:** tirar a flag e fazer redeploy (sem SQL).
 - O runbook completo está em `network-agents-setup:docs/ops/RAG-CANONICAL.md`, secção F3a.
+
+## Autoridade das fontes (F3b, opcional)
+
+Env opcional: `KNOWLEDGE_RPC_V3` (por omissão desligada; só liga com `1`). Decisões no `network-agents-setup` (PENDENCIAS §10): P-31 = D, P-32 = B, P-33 = B.
+
+- **Ligada:** o retrieve chama `match_knowledge_v3`, que é a v2 com mais 2 coisas:
+  - o `metadata` de cada hit ganha `authority` (`oficial` > `curado` > `experimental`; sem autoridade gravada, `curado`) e `superseded_by`;
+  - o `filters` aceita `min_authority`.
+  - Por omissão a v3 devolve tudo, pela ordem da semelhança, e não precisa da `KNOWLEDGE_RPC_V2`.
+- **Desligada:** fica tudo como na secção anterior, e os hits não ganham chaves novas.
+- **`min_authority` sem a v3 a responder** (flag desligada, ou v3 por criar) devolve **zero hits**, com aviso no log. Um plano que exige autoridade mínima nunca recebe fontes por verificar.
+- **Ordem:**
+  1. o DEV corre a migração `network-agents-setup:scripts/migrations/f3b_authority_v3.sql` (antes, a query de controlo no fim do ficheiro);
+  2. depois põe `KNOWLEDGE_RPC_V3=1` na Vercel (Production) e faz redeploy.
+  - Se a flag for ligada antes do SQL, a chamada cai para a v2, ou para a `match_knowledge` se a v2 também faltar, com aviso no log.
+  - **Rollback:** tirar a flag e fazer redeploy (sem SQL).
+- O runbook completo está em `network-agents-setup:docs/ops/RAG-CANONICAL.md`, secção «F3b: autoridade e conflitos».
