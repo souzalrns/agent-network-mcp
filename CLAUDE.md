@@ -7,7 +7,8 @@ No **início de cada sessão** ou antes da **primeira alteração de código**:
 1. Ler `docs/STATUS.md`.
 2. Para visão do conjunto LRNSdigital, ler no `network-agents-setup`:
    `docs/STATUS.md` (índice curto) e `docs/initiatives/PENDENCIAS.md` (o único documento de estado).
-   O que está em `docs/archive/` (incluindo os antigos STATUS-ECOSSISTEMA e STATUS-PROJETOS) é histórico.
+   O passado (itens fechados, decisões tomadas e os documentos antigos dos 2 repos, com link para o texto
+   integral) vive só no `docs/initiatives/PENDENCIAS-HISTORICO.md` do `network-agents-setup` (§13). É histórico.
 3. Se útil, correr ou consultar `docs/generated/AGENTS.md` (regenerar: `node scripts/document-agents.js`).
 4. Resumir: o que está em produção, agentes relevantes, o que não partir.
 5. Só depois propor ou executar trabalho.
