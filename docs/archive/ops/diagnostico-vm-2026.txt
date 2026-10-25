@@ -1,3 +1,5 @@
+# HISTÓRICO (arquivado a 2026-10-25, H-01): diagnóstico da VM do bridge-worker, que foi desligado (S20).
+
 === MEMORIA ===
                total        used        free      shared  buff/cache   available
 Mem:           952Mi       786Mi       112Mi        60Mi       273Mi       165Mi

@@ -8,6 +8,7 @@ import {
   getClient,
 } from "../../../lib/memory.js";
 import { INPUT_LIMITS } from "../../../lib/inputLimits.js";
+import { CODE_TASKS_DISABLED_MESSAGE, codeTasksEnabled } from "../../../lib/codeTasks.js";
 import { KB_PATTERN, ingestDocument, retrieveKnowledgeHits } from "../../../lib/knowledge.js";
 import { routeRequest, runAgent } from "../../../lib/agentRuntime.js";
 
@@ -364,7 +365,9 @@ const handler = createMcpHandler(
       "dispatch_code_task",
       {
         description:
-          "Envia uma tarefa para ser executada pelo Claude Code na máquina " +
+          "DESLIGADA por omissão (S20: o bridge-worker não está a correr; responde " +
+          "'indisponível' e não cria tarefas). Quando ligada (CODE_TASKS_ENABLED=1): " +
+          "envia uma tarefa para ser executada pelo Claude Code na máquina " +
           "local do Luiz (não aqui no chat). A tarefa fica numa fila " +
           "(tabela code_tasks) e um processo a correr na máquina dele " +
           "(bridge-worker.js) apanha-a, corre `claude -p` no diretório do " +
@@ -403,6 +406,9 @@ const handler = createMcpHandler(
           .strict(),
       },
       async ({ prompt, project_path, allowed_tools }) => {
+        if (!codeTasksEnabled()) {
+          return { content: [{ type: "text", text: CODE_TASKS_DISABLED_MESSAGE }] };
+        }
         const supabase = getClient();
         if (!supabase) {
           return {

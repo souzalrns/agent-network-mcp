@@ -1,6 +1,6 @@
 # Rede de Agentes LRNSdigital
 
-> Servidor MCP com 33 agentes especializados, roteamento automático via LLM, memória vetorial persistente e execução remota de código — tudo a custo zero.
+> Servidor MCP com 34 agentes especializados, roteamento automático via LLM e memória vetorial persistente — tudo a custo zero.
 
 [🔗 Ver Aplicação em Produção](https://agent-network-mcp-oddn.vercel.app)
 
@@ -17,9 +17,9 @@ Gerir ~10 negócios em simultâneo significa contexto técnico e de domínio dis
 
 ## Principais Funcionalidades
 
-- **33 agentes especializados** por domínio de negócio (jurídico, engenharia, design, dados, marketing, entre outros) — roteados automaticamente por linguagem natural
+- **34 agentes especializados** por domínio de negócio (jurídico, engenharia, design, dados, marketing, entre outros) — roteados automaticamente por linguagem natural. Lista gerada: [`docs/generated/AGENTS.md`](docs/generated/AGENTS.md)
 - **Memória vetorial (RAG)** por agente + conhecimento `global` partilhado por toda a rede
-- **Execução remota de código** numa VM própria via fila assíncrona (Claude Code local, sem SSH manual). *Estado por confirmar: está registado um 401 no bridge-worker da VM (item S20 do `network-agents-setup`).*
+- **Execução remota de código: desligada.** O bridge-worker da VM foi desligado (S20 do `network-agents-setup`: a chave SSH perdeu-se e não há capacidade na Oracle para outro servidor). A tool `dispatch_code_task` falha fechada e não cria tarefas; só volta com `CODE_TASKS_ENABLED=1` e um worker novo.
 - **Registo automático de execuções** (`agent_log`) para auditoria e aprendizagem futura
 
 **Repositório irmão:** [`network-agents-setup`](https://github.com/souzalrns/network-agents-setup), com o motor de execução (`plan_runner`), a governação (HITL, orçamentos de tokens) e os domain packs. Este repo é a superfície MCP de produção.
@@ -47,7 +47,7 @@ Gerir ~10 negócios em simultâneo significa contexto técnico e de domínio dis
 ## Destaques Técnicos
 
 1. **Custo zero por desenho, não por sorte:** todo o roteamento corre em Gemini Flash Lite gratuito — a arquitetura foi pensada desde o início para nunca depender de créditos pagos para operação normal.
-2. **Conhecimento global vs. por agente:** a busca semântica filtra por `agent_id` específico OU `agent_id = 'global'` na mesma função SQL — conhecimento fundamental (metodologia, princípios) fica visível a todos os 33 agentes sem duplicação manual em cada um.
+2. **Conhecimento global vs. por agente:** a busca semântica filtra por `agent_id` específico OU `agent_id = 'global'` na mesma função SQL — conhecimento fundamental (metodologia, princípios) fica visível a todos os agentes sem duplicação manual em cada um.
 3. **Onboarding de agente à prova de falha silenciosa (em progresso):** todo agente novo devia exigir linha correspondente na tabela `projects` antes de aceitar `save_project_state`. Na prática, esta regra continua a ser esquecida — os 3 agentes horizontais mais recentes (comunicações, marketing, produto/tech) ficaram sem essa linha até serem detetados numa auditoria de rotina. A correção é sempre rápida; o processo de onboarding que a previna de acontecer de todo ainda não existe.
 
 ## Como Rodar Localmente

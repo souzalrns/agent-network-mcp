@@ -43,6 +43,7 @@ before(async () => {
       GEMINI_API_KEY: "e2e-fake",
       SUPABASE_URL: "http://supabase.e2e",
       SUPABASE_SERVICE_ROLE_KEY: "e2e-fake",
+      CODE_TASKS_ENABLED: "1", // S20: desligada por omissão; o e2e prova o caminho quando ligada
     },
   });
   for (let i = 0; i < 120; i++) {
