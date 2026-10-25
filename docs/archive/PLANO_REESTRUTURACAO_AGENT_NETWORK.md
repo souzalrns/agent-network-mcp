@@ -1,3 +1,6 @@
+> **HISTÓRICO (arquivado a 2026-10-25, H-01).** Não é o estado actual nem um plano em execução.
+> Estado vivo: `docs/STATUS.md` deste repo e `docs/initiatives/PENDENCIAS.md` do `network-agents-setup`.
+
 # Plano de Reestruturação Arquitetural — Agent Network Core
 
 **De rede acoplada a plataforma cognitiva genérica: um núcleo que qualquer pessoa pode rodar.**

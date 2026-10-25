@@ -5,9 +5,9 @@
 No **início de cada sessão** ou antes da **primeira alteração de código**:
 
 1. Ler `docs/STATUS.md`.
-2. Para visão do conjunto LRNSdigital, ler:
-   https://github.com/souzalrns/network-agents-setup/blob/main/docs/STATUS-ECOSSISTEMA.md
-   (atalho “status dos projetos”: docs/STATUS-PROJETOS.md no mesmo repo PCU)
+2. Para visão do conjunto LRNSdigital, ler no `network-agents-setup`:
+   `docs/STATUS.md` (índice curto) e `docs/initiatives/PENDENCIAS.md` (o único documento de estado).
+   O que está em `docs/archive/` (incluindo os antigos STATUS-ECOSSISTEMA e STATUS-PROJETOS) é histórico.
 3. Se útil, correr ou consultar `docs/generated/AGENTS.md` (regenerar: `node scripts/document-agents.js`).
 4. Resumir: o que está em produção, agentes relevantes, o que não partir.
 5. Só depois propor ou executar trabalho.
@@ -16,7 +16,7 @@ Não esperar o utilizador dizer “lê o STATUS”.
 
 ## Identidade deste repo
 
-- **Camada:** privada / produção.
+- **Camada:** privada / produção. "Privada" é a camada, não a visibilidade: o repo no GitHub é **público** (Actions gratuitas; nunca versionar segredos nem dados de clientes).
 - **Papel:** servidor MCP (Vercel) com router + agentes de negócio e memória Supabase.
 - **Não é** o PCU genérico de portfólio → `network-agents-setup`.
 - Agentes em `lib/agents.js` têm systemPrompt e contexto real; não substituir por templates vazios tipo ruflo.

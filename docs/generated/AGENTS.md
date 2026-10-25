@@ -2,7 +2,7 @@
 
 > **Não editar à mão.** Regenerar com: `node scripts/document-agents.js`
 >
-> Gerado em: 2026-10-19
+> Gerado em: 2026-10-25
 > Fonte: `lib/agents.js`
 > Total: **34** agentes
 

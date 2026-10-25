@@ -1,3 +1,6 @@
+> **HISTÓRICO (arquivado a 2026-10-25, H-01).** Não é o estado actual nem um plano em execução.
+> Estado vivo: `docs/STATUS.md` deste repo e `docs/initiatives/PENDENCIAS.md` do `network-agents-setup`.
+
 # Addendum — Padrões Extraídos de Orquestradores Open Source
 
 **Complementa `PLANO_REESTRUTURACAO_AGENT_NETWORK_v1.1.md`. Regra de quarentena mantida: padrões arquiteturais podem ser estudados e adotados antes do código-fonte de origem sair de quarentena — ideia e implementação são avaliadas separadamente, conforme já praticado com Ruflo e Hermes Agent em sessões anteriores.**
