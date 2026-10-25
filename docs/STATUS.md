@@ -49,7 +49,7 @@ node scripts/document-agents.js
 1. Ler este `docs/STATUS.md`
 2. Pendências e decisões → `network-agents-setup` `docs/initiatives/PENDENCIAS.md` (o único documento de estado)
 3. Graphify local se existir grafo
-4. Planos antigos (reestruturação v1.0–v1.2, addendum, diagnóstico da VM) → `docs/archive/` (histórico, não executar)
+4. Planos antigos (reestruturação v1.0–v1.2, addendum, diagnóstico da VM): saíram da árvore; a ficha de cada um e o link para o texto integral estão no [§13 do `PENDENCIAS-HISTORICO.md`](https://github.com/souzalrns/network-agents-setup/blob/main/docs/initiatives/PENDENCIAS-HISTORICO.md) do `network-agents-setup` (histórico, não executar)
 
 ## Changelog curto
 
@@ -60,5 +60,6 @@ node scripts/document-agents.js
 | 30/09/2026 | Fix das 9 tools MCP (PR #9): recebiam `undefined` desde 27/09 (`024e0ee`); agora `registerTool`; e2e em `tests/e2e/` |
 | 30/09/2026 | J6: ledger de tokens em produção (PR #8): tabela `token_usage` criada pelo DEV, 1 linha por chamada Gemini — ver `docs/ops/TOKEN-LEDGER.md` (falta confirmar a 1.ª linha real) |
 | 30/09/2026 | Fix do `log_execution`: 4 campos opcionais passam a chegar ao `agent_log` (PR `fix/log-execution-meta`) |
-| 05/10/2026 | H-005/H-006 (PENDENCIAS do `network-agents-setup`): as Actions agendadas estão activas, e a linha "desligado" foi corrigida; o README perdeu os links mortos e a nota de TODO; `LICENSE` MIT; `diagnostico-vm.txt` → `docs/ops/diagnostico-vm-2026.txt` (hoje em `docs/archive/ops/`); actions pinadas por SHA em versões Node 24 (H-003) |
+| 05/10/2026 | H-005/H-006 (PENDENCIAS do `network-agents-setup`): as Actions agendadas estão activas, e a linha "desligado" foi corrigida; o README perdeu os links mortos e a nota de TODO; `LICENSE` MIT; `diagnostico-vm.txt` → `docs/ops/diagnostico-vm-2026.txt` (hoje fora da árvore; ver o §13 do histórico do NAS); actions pinadas por SHA em versões Node 24 (H-003) |
 | 25/10/2026 | H-01: `dispatch_code_task` falha fechada (S20, `lib/codeTasks.js`); README com 34 agentes e sem prometer execução remota; números verificados por teste; planos antigos → `docs/archive/` |
+| 25/10/2026 | H-01, opção B (fonte única do passado): os 5 documentos de `docs/archive/` saem da árvore; ficha e link permanente no §13 do `PENDENCIAS-HISTORICO.md` do NAS; `tests/docsNumbers.test.mjs` impede que `docs/archive/` volte |
