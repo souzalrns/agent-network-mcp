@@ -4,11 +4,11 @@ set -euo pipefail
 cd "${CLAUDE_PROJECT_DIR:-.}"
 
 # graphify lives outside the repo (~/.local), so it never survives a
-# fresh container. Reinstalling is cheap; only skip it if already present.
+# fresh container. `uv tool install` is itself idempotent/fast when already
+# installed, so just always run it rather than guarding it ourselves.
+# [mcp] extra is needed for the graphify-mcp server declared in .mcp.json.
 export PATH="$HOME/.local/bin:$PATH"
-if ! command -v graphify >/dev/null 2>&1; then
-  uv tool install graphifyy --quiet
-fi
+uv tool install "graphifyy[mcp]" --quiet
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$CLAUDE_ENV_FILE"
 
 # graphify-out/ is gitignored and only exists on disk for this container's
