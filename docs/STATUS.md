@@ -33,6 +33,12 @@ com agentes de projeto que têm **systemPrompt + contexto real de negócio**.
 | Graphify (código) | Instalado; `graphify-out/` **gitignored**; update local |
 | GitHub Actions (heartbeat, etc.) | **Activo, agendado:** `heartbeat.yml` (de 3 em 3 dias) e `audit-tools.yml` (dias 1 e 15). A premissa custo zero mantém-se: o repo é público e os minutos são gratuitos (corrigido a 2026-10-05, H-005) |
 
+## Publicações (dados de negócio da vertical editorial)
+
+| Publicação | Configuração | Estado |
+|---|---|---|
+| O Bode | `publications/o-bode/seed.json` (marca, 8 editorias, 5 páginas, 35 pautas) | Configuração pronta; sem base de dados de produção nem deploy. A aplicação vive em `network-agents-setup/verticals/editorial` (item E-005 do PENDENCIAS) |
+
 ## O que NÃO está aqui
 
 - Motor genérico / demo pública → `network-agents-setup`
@@ -63,3 +69,4 @@ node scripts/document-agents.js
 | 05/10/2026 | H-005/H-006 (PENDENCIAS do `network-agents-setup`): as Actions agendadas estão activas, e a linha "desligado" foi corrigida; o README perdeu os links mortos e a nota de TODO; `LICENSE` MIT; `diagnostico-vm.txt` → `docs/ops/diagnostico-vm-2026.txt` (hoje fora da árvore; ver o §13 do histórico do NAS); actions pinadas por SHA em versões Node 24 (H-003) |
 | 25/10/2026 | H-01: `dispatch_code_task` falha fechada (S20, `lib/codeTasks.js`); README com 34 agentes e sem prometer execução remota; números verificados por teste; planos antigos → `docs/archive/` |
 | 25/10/2026 | H-01, opção B (fonte única do passado): os 5 documentos de `docs/archive/` saem da árvore; ficha e link permanente no §13 do `PENDENCIAS-HISTORICO.md` do NAS; `tests/docsNumbers.test.mjs` impede que `docs/archive/` volte |
+| 17/11/2026 | E-005: `publications/o-bode/seed.json`, a configuração d'O Bode para a vertical editorial do `network-agents-setup` (marca e pautas aqui, código lá) |

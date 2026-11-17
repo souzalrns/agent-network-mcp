@@ -1,0 +1,842 @@
+{
+  "_nota": "Configuração inicial d'O Bode para a vertical editorial (network-agents-setup/verticals/editorial). A marca vive aqui, não no código. As pautas são hipóteses de investigação: cada uma diz o que confirmar primeiro.",
+  "publication": {
+    "slug": "o-bode",
+    "name": "O Bode",
+    "tagline": "Coimbra acontece. O mundo também.",
+    "description": "Jornal digital independente, feito a partir de Coimbra: a cidade, a universidade, a região e a atualidade nacional e internacional. Irreverente na comunicação, sério na apuração.",
+    "primary_color": "#15211C",
+    "secondary_color": "#F0B429",
+    "language": "pt-PT",
+    "agent_names": {
+      "editorial.radar": "Bode Radar",
+      "editorial.research": "Bode Research",
+      "editorial.factcheck": "Bode FactCheck",
+      "editorial.editor": "Bode Editor"
+    },
+    "settings": {
+      "require_second_reviewer": true
+    },
+    "public_launch": false
+  },
+  "sections": [
+    {
+      "slug": "coimbra",
+      "name": "Coimbra",
+      "color": "#B4232E",
+      "description": "A cidade, a universidade, as freguesias, transportes, habitação e comércio."
+    },
+    {
+      "slug": "politica",
+      "name": "Política e sociedade",
+      "color": "#2F5FB3",
+      "description": "Autarquias, país, União Europeia e o impacto das decisões públicas."
+    },
+    {
+      "slug": "tecnologia",
+      "name": "Tecnologia e inovação",
+      "color": "#0E8F9A",
+      "description": "Inteligência artificial, startups, investigação e tendências digitais."
+    },
+    {
+      "slug": "cultura",
+      "name": "Cultura e eventos",
+      "color": "#A545B5",
+      "description": "Concertos, teatro, cinema, exposições e a agenda da cidade."
+    },
+    {
+      "slug": "desporto",
+      "name": "Desporto",
+      "color": "#3E8E41",
+      "description": "Académica, desporto universitário e as histórias dos atletas."
+    },
+    {
+      "slug": "economia",
+      "name": "Economia e trabalho",
+      "color": "#C9820A",
+      "description": "Emprego, custo de vida, empresas e oportunidades."
+    },
+    {
+      "slug": "ciencia",
+      "name": "Ciência e conhecimento",
+      "color": "#5B6CD9",
+      "description": "Investigação, saúde, ambiente e educação."
+    },
+    {
+      "slug": "opiniao",
+      "name": "Opinião e entrevistas",
+      "color": "#7A8480",
+      "description": "Crónicas, debates e conversas."
+    }
+  ],
+  "pages": [
+    {
+      "slug": "sobre",
+      "title": "Sobre",
+      "published": true,
+      "body": "Somos um jornal digital independente feito a partir de Coimbra.\n\nAcompanhamos a cidade, a universidade, a região e os acontecimentos nacionais e internacionais, com linguagem acessível e jornalismo próprio: cada artigo tem autor identificado e fontes verificadas."
+    },
+    {
+      "slug": "estatuto-editorial",
+      "title": "Estatuto editorial",
+      "published": false,
+      "body": "Rascunho: o estatuto editorial é aprovado pela direção e depositado na ERC antes do lançamento."
+    },
+    {
+      "slug": "politica-de-correcoes",
+      "title": "Política de correções",
+      "published": true,
+      "body": "Quando erramos, corrigimos. A correção fica no fim do artigo, com a data e o que mudou. Para pedir uma correção ou exercer o direito de resposta, escreve à redação."
+    },
+    {
+      "slug": "contactos",
+      "title": "Contactos",
+      "published": true,
+      "body": "Escreve à redação pelo email indicado no rodapé."
+    },
+    {
+      "slug": "privacidade",
+      "title": "Política de privacidade",
+      "published": false,
+      "body": "Rascunho: o site não usa cookies de publicidade nem de seguimento. A redação usa um cookie de sessão."
+    }
+  ],
+  "stories": [
+    {
+      "title": "Estudar em Coimbra está a tornar-se um luxo? O custo de vida dos estudantes em números",
+      "section": "coimbra",
+      "format": "reportagem",
+      "priority": 1,
+      "angle": "Somar quarto, alimentação, transportes e propinas para chegar a um orçamento mensal real, comparar deslocados com residentes e Coimbra com outras cidades universitárias.",
+      "to_confirm": "Preços atuais de quartos e residências, valores das bolsas e dados oficiais mais recentes (INE, DGES).",
+      "sources": [
+        "Associação Académica de Coimbra",
+        "Serviços de Ação Social da UC (SASUC)",
+        "Estudantes deslocados de diferentes realidades económicas",
+        "Proprietários e gestores de alojamento",
+        "INE e Observatório do Alojamento Estudantil"
+      ],
+      "questions": [
+        "Quanto gastas num mês normal e em quê?",
+        "O que deixaste de fazer por causa do custo do quarto?",
+        "Que apoios existem e quantos pedidos ficam sem resposta?"
+      ],
+      "instagram": "Carrossel «Quanto custa viver em Coimbra?»; reels com três estudantes e três orçamentos; sondagem nos stories sobre a renda.",
+      "youtube": "Reportagem de 3 a 5 minutos com os três orçamentos lado a lado."
+    },
+    {
+      "title": "A inteligência artificial está a mudar a forma como os estudantes aprendem?",
+      "section": "tecnologia",
+      "format": "reportagem",
+      "priority": 1,
+      "angle": "Perceber como estudantes, professores e investigadores usam ferramentas de IA, o que ganham com elas e onde começam o plágio e a dependência.",
+      "to_confirm": "Orientações e regulamentos em vigor na UC e em cada faculdade sobre o uso de IA.",
+      "sources": [
+        "Docentes da UC de áreas diferentes",
+        "Estudantes de vários cursos",
+        "Investigadores de inteligência artificial (DEI/CISUC)",
+        "Conselhos pedagógicos e regulamentos académicos"
+      ],
+      "questions": [
+        "Para que usas IA no estudo e para que te recusas a usar?",
+        "Como mudou a forma de avaliar desde que estas ferramentas apareceram?",
+        "O que diz a regra da tua faculdade e quem a conhece?"
+      ],
+      "instagram": "Carrossel «5 coisas que os estudantes já fazem com IA»; caixa de perguntas «Já usaste IA num trabalho?».",
+      "youtube": "Vídeo professor e estudante frente a frente: ameaça ou ferramenta?"
+    },
+    {
+      "title": "Os jovens portugueses estão afastados da política ou simplesmente não se sentem representados?",
+      "section": "politica",
+      "format": "reportagem",
+      "priority": 1,
+      "angle": "Cruzar dados de participação eleitoral jovem com testemunhos de quem vota, de quem não vota e de quem milita, e olhar para o peso das redes sociais.",
+      "to_confirm": "Dados oficiais de abstenção por faixa etária e estudos recentes sobre participação jovem.",
+      "sources": [
+        "Docentes de ciência política (FEUC, CES)",
+        "Estudantes de diferentes orientações",
+        "Dirigentes associativos e juventudes partidárias",
+        "Dados eleitorais oficiais (SGMAI/CNE)"
+      ],
+      "questions": [
+        "Votaste nas últimas eleições? Porquê?",
+        "O que teria de mudar para te sentires representado?",
+        "Onde te informas sobre política?"
+      ],
+      "instagram": "Reels com respostas rápidas de estudantes; infográfico com os dados eleitorais.",
+      "youtube": "Vox pop na Praça da República com a mesma pergunta para todos."
+    },
+    {
+      "title": "Coimbra tem vida para além da universidade: os espaços e eventos que merecem ser descobertos",
+      "section": "cultura",
+      "format": "agenda",
+      "priority": 1,
+      "angle": "Mapear espaços culturais independentes, programação dos próximos dias e projetos emergentes, com datas, horários, preços e morada.",
+      "to_confirm": "Programação da semana de publicação junto de cada espaço.",
+      "sources": [
+        "Câmara Municipal de Coimbra (cultura)",
+        "Equipamentos culturais e programadores",
+        "Produtores de eventos",
+        "Artistas locais e associações culturais"
+      ],
+      "questions": [
+        "O que está a acontecer aqui que a cidade ainda não descobriu?",
+        "Quem é o vosso público e quem gostavam que viesse?",
+        "O que falta a Coimbra para ter mais oferta cultural?"
+      ],
+      "instagram": "Carrossel «5 coisas para fazer em Coimbra esta semana»; reels dos espaços.",
+      "youtube": "Entrevista curta a um artista local no seu espaço de trabalho."
+    },
+    {
+      "title": "Estudar em Coimbra, trabalhar noutro lugar? O desafio de reter os jovens talentos",
+      "section": "economia",
+      "format": "reportagem",
+      "priority": 1,
+      "angle": "Saber quantos diplomados ficam, que emprego encontram e como os salários se comparam com o custo da habitação.",
+      "to_confirm": "Dados de empregabilidade e de destino dos diplomados (UC, DGEEC, IEFP).",
+      "sources": [
+        "Universidade de Coimbra (observatório de empregabilidade)",
+        "IEFP",
+        "Empresas, startups e incubadoras",
+        "Recém-licenciados que ficaram e que saíram",
+        "Economistas do mercado de trabalho"
+      ],
+      "questions": [
+        "Ficaste ou saíste, e o que pesou na decisão?",
+        "Que perfis procuram e não encontram em Coimbra?",
+        "O que faria um diplomado ficar?"
+      ],
+      "instagram": "Sondagem «Ficavas em Coimbra depois do curso?»; infográfico sobre emprego.",
+      "youtube": "Três recém-licenciados, três percursos; entrevista a um empreendedor da região."
+    },
+    {
+      "title": "Metrobus: o que mudou na forma como Coimbra se desloca?",
+      "section": "coimbra",
+      "format": "reportagem",
+      "priority": 2,
+      "angle": "Comparar o que foi prometido com o serviço real: tempos de viagem, frequências e quem ganhou ou perdeu ligação com a mudança.",
+      "to_confirm": "Em que troços o Metrobus já opera à data da reportagem e com que horários.",
+      "sources": [
+        "Metro Mondego",
+        "SMTUC",
+        "Câmara Municipal de Coimbra",
+        "Utentes da Lousã, Miranda do Corvo e da cidade",
+        "Comerciantes ao longo do traçado"
+      ],
+      "questions": [
+        "Quanto tempo demoravas antes e quanto demoras agora?",
+        "Que ligações deixaram de existir?",
+        "Quando fica o sistema completo e o que falta?"
+      ],
+      "instagram": "Reels a cronometrar o mesmo percurso de Metrobus, autocarro e a pé; carrossel com o mapa explicado.",
+      "youtube": "Reportagem em viagem, de uma ponta à outra da linha."
+    },
+    {
+      "title": "Estação Nova fechada: o que vai nascer nos terrenos junto ao rio?",
+      "section": "coimbra",
+      "format": "explicador",
+      "priority": 2,
+      "angle": "Explicar o que está decidido e o que ainda é intenção para os terrenos ferroviários da Baixa: habitação, escritórios, espaço público.",
+      "to_confirm": "Estado atual das negociações entre a câmara e a Infraestruturas de Portugal e documentos aprovados.",
+      "sources": [
+        "Câmara Municipal de Coimbra (urbanismo)",
+        "Infraestruturas de Portugal",
+        "Moradores e comerciantes da Baixa",
+        "Docentes de Arquitetura e urbanismo da UC"
+      ],
+      "questions": [
+        "O que está aprovado e o que é só plano?",
+        "Haverá habitação a custos acessíveis e para quem?",
+        "Que prazos são realistas?"
+      ],
+      "instagram": "Carrossel antes/depois com mapa da zona; stories com pergunta «O que querias ver ali?».",
+      "youtube": "Passeio comentado pelo local com um urbanista."
+    },
+    {
+      "title": "Repúblicas de Coimbra: quantas resistem e quem lá vive hoje?",
+      "section": "coimbra",
+      "format": "reportagem",
+      "priority": 2,
+      "angle": "Fazer o retrato atual das repúblicas: quantas estão ativas, quanto custa lá viver, que ameaças enfrentam e o que significam para quem as habita.",
+      "to_confirm": "Número de repúblicas ativas e situação jurídica dos imóveis.",
+      "sources": [
+        "Conselho de Repúblicas",
+        "Repúblicos atuais e antigos",
+        "Proprietários dos imóveis",
+        "Câmara Municipal e UC (património)"
+      ],
+      "questions": [
+        "Quanto pagas e como se decide a vida da casa?",
+        "A vossa república corre risco de fechar?",
+        "O que perde a cidade se desaparecerem?"
+      ],
+      "instagram": "Reels «Um jantar numa república»; carrossel com a história em seis datas.",
+      "youtube": "Mini-documentário dentro de duas repúblicas."
+    },
+    {
+      "title": "A Baixa depois das seis da tarde: quem ainda vive e trabalha no centro histórico?",
+      "section": "coimbra",
+      "format": "reportagem",
+      "priority": 2,
+      "angle": "Contar lojas abertas e fechadas em duas ou três ruas, ouvir quem ficou e confrontar com os planos de revitalização.",
+      "to_confirm": "Dados de população residente na Baixa e medidas de revitalização em curso.",
+      "sources": [
+        "Agência para a Promoção da Baixa de Coimbra",
+        "Comerciantes antigos e recém-chegados",
+        "Moradores",
+        "Câmara Municipal de Coimbra"
+      ],
+      "questions": [
+        "Há quanto tempo está aqui e o que mudou?",
+        "O que faria as pessoas voltarem a morar na Baixa?",
+        "As obras ajudaram ou afastaram clientes?"
+      ],
+      "instagram": "Carrossel com a contagem rua a rua; reels ao anoitecer.",
+      "youtube": "Reportagem de rua com o mesmo percurso de dia e de noite."
+    },
+    {
+      "title": "Passe, carreiras e contas: como estão os transportes urbanos de Coimbra?",
+      "section": "coimbra",
+      "format": "explicador",
+      "priority": 2,
+      "angle": "Explicar a situação financeira dos SMTUC, as alterações ao tarifário e o que isso muda para estudantes e trabalhadores.",
+      "to_confirm": "Tarifário em vigor, contas mais recentes dos SMTUC e decisões da câmara sobre o passe.",
+      "sources": [
+        "SMTUC",
+        "Câmara Municipal de Coimbra",
+        "Utentes e estudantes",
+        "Motoristas e estruturas sindicais"
+      ],
+      "questions": [
+        "Quanto custa hoje o passe e quanto custava?",
+        "Que carreiras falham mais e porquê?",
+        "Como se pretende equilibrar as contas?"
+      ],
+      "instagram": "Carrossel «O teu passe explicado»; caixa de perguntas sobre atrasos.",
+      "youtube": "Explicador de 3 minutos com gráficos simples."
+    },
+    {
+      "title": "Residências prometidas, camas entregues: o ponto de situação do alojamento estudantil público",
+      "section": "coimbra",
+      "format": "reportagem",
+      "priority": 2,
+      "angle": "Listar as residências anunciadas para Coimbra, quantas camas já abriram, quantas estão em obra e quantas continuam no papel.",
+      "to_confirm": "Lista oficial de projetos financiados e datas de conclusão atualizadas.",
+      "sources": [
+        "SASUC",
+        "Politécnico de Coimbra",
+        "Plano Nacional para o Alojamento no Ensino Superior",
+        "AAC",
+        "Câmara Municipal de Coimbra"
+      ],
+      "questions": [
+        "Quantas camas existem e quantos candidatos ficaram de fora?",
+        "Que obras estão atrasadas e porquê?",
+        "Quando abre a próxima residência?"
+      ],
+      "instagram": "Infográfico prometido vs entregue; stories com visita a uma obra.",
+      "youtube": "Visita filmada a uma residência nova e a uma antiga."
+    },
+    {
+      "title": "Um ano de novo executivo: o que saiu do papel na Câmara de Coimbra?",
+      "section": "politica",
+      "format": "reportagem",
+      "priority": 2,
+      "angle": "Pegar nas principais promessas da campanha autárquica e verificar, uma a uma, o que foi cumprido, iniciado ou abandonado.",
+      "to_confirm": "Programa eleitoral, atas das reuniões de câmara e data exata da tomada de posse.",
+      "sources": [
+        "Executivo municipal",
+        "Vereadores da oposição",
+        "Atas da Câmara e da Assembleia Municipal",
+        "Associações de moradores"
+      ],
+      "questions": [
+        "Que promessa considera cumprida e com que prova?",
+        "O que ficou por fazer e porquê?",
+        "O que muda no segundo ano?"
+      ],
+      "instagram": "Carrossel «Promessa a promessa» com semáforo; sondagem nos stories.",
+      "youtube": "Vídeo-resumo com as cinco promessas mais importantes."
+    },
+    {
+      "title": "Orçamento municipal para 2027: para onde vai o dinheiro de Coimbra?",
+      "section": "politica",
+      "format": "explicador",
+      "priority": 2,
+      "angle": "Traduzir o orçamento em linguagem simples: quanto há, de onde vem, onde se gasta e o que muda face ao ano anterior.",
+      "to_confirm": "Versão aprovada do orçamento e calendário de votação.",
+      "sources": [
+        "Documento do orçamento municipal",
+        "Vereação das finanças",
+        "Oposição",
+        "Economista da FEUC"
+      ],
+      "questions": [
+        "Quais são as três maiores despesas?",
+        "O que aumenta e o que é cortado?",
+        "Quanto vai para habitação, transportes e cultura?"
+      ],
+      "instagram": "Carrossel «O orçamento em 6 números».",
+      "youtube": "Explicador animado de 2 minutos."
+    },
+    {
+      "title": "Quem representa os estudantes? Participação e abstenção nas eleições da AAC",
+      "section": "politica",
+      "format": "reportagem",
+      "priority": 2,
+      "angle": "Olhar para a evolução da participação nas eleições da Académica e perguntar porque votam tão poucos ou tantos.",
+      "to_confirm": "Datas das próximas eleições e números oficiais de votantes dos últimos anos.",
+      "sources": [
+        "Comissão eleitoral e Conselho Fiscal da AAC",
+        "Listas candidatas",
+        "Estudantes que votam e que não votam",
+        "Antigos dirigentes"
+      ],
+      "questions": [
+        "Sabes o que faz a Direção-Geral da AAC?",
+        "Porque votaste ou não votaste?",
+        "O que deveria ser prioridade da Académica?"
+      ],
+      "instagram": "Reels «Sabes quem te representa?»; infográfico da participação.",
+      "youtube": "Debate curto entre representantes das listas."
+    },
+    {
+      "title": "Estudantes internacionais em Coimbra: da matrícula à renovação do visto",
+      "section": "politica",
+      "format": "reportagem",
+      "priority": 2,
+      "angle": "Acompanhar o percurso burocrático de quem vem de fora: vistos, autorizações de residência, propinas diferenciadas e integração.",
+      "to_confirm": "Tempos de espera atuais na AIMA e número de estudantes internacionais na UC.",
+      "sources": [
+        "Estudantes internacionais de várias origens",
+        "Relações Internacionais da UC",
+        "AIMA",
+        "Associações de estudantes estrangeiros e ESN Coimbra"
+      ],
+      "questions": [
+        "Quanto tempo esperaste por cada documento?",
+        "O que te surpreendeu ao chegar?",
+        "Que apoio recebeste da universidade?"
+      ],
+      "instagram": "Carrossel «O caminho de um visto»; reels com três sotaques.",
+      "youtube": "Episódio de conversa com dois estudantes de continentes diferentes."
+    },
+    {
+      "title": "Das salas da UC para o mercado: quantas startups nascem em Coimbra e quantas ficam?",
+      "section": "tecnologia",
+      "format": "reportagem",
+      "priority": 2,
+      "angle": "Seguir o percurso das empresas incubadas na cidade: quantas sobrevivem, quantas crescem cá e quantas mudam de sede.",
+      "to_confirm": "Números de empresas incubadas e taxa de sobrevivência nos últimos anos.",
+      "sources": [
+        "Instituto Pedro Nunes",
+        "UC Business",
+        "Fundadores que ficaram e que saíram",
+        "Investidores e Startup Portugal"
+      ],
+      "questions": [
+        "Porque começaram em Coimbra?",
+        "O que vos faria sair ou já vos fez sair?",
+        "O que falta ao ecossistema local?"
+      ],
+      "instagram": "Carrossel com cinco empresas nascidas em Coimbra; reels numa incubadora.",
+      "youtube": "Visita a uma startup com o fundador a explicar o produto."
+    },
+    {
+      "title": "Regras para IA nas avaliações: o que diz cada faculdade?",
+      "section": "tecnologia",
+      "format": "explicador",
+      "priority": 2,
+      "angle": "Reunir numa só página as orientações de cada faculdade sobre o uso de IA em trabalhos e exames.",
+      "to_confirm": "Existência e versão atual de cada regulamento, faculdade a faculdade.",
+      "sources": [
+        "Conselhos pedagógicos das faculdades",
+        "Reitoria",
+        "Docentes",
+        "Núcleos de estudantes"
+      ],
+      "questions": [
+        "É permitido usar IA e em que condições?",
+        "Como se deteta e o que acontece a quem infringe?",
+        "Os estudantes conhecem a regra?"
+      ],
+      "instagram": "Carrossel-guia «Posso usar IA?» por faculdade.",
+      "youtube": "Vídeo curto com três situações práticas."
+    },
+    {
+      "title": "Computação avançada na UC: para que serve e quem a usa?",
+      "section": "tecnologia",
+      "format": "reportagem",
+      "priority": 2,
+      "angle": "Mostrar que investigação depende do centro de computação da universidade e o que isso muda na vida das pessoas.",
+      "to_confirm": "Equipamento atualmente instalado, capacidade e projetos em curso.",
+      "sources": [
+        "Laboratório de Computação Avançada da UC",
+        "Investigadores utilizadores",
+        "FCT (rede de computação avançada)"
+      ],
+      "questions": [
+        "Que problema só se resolve com esta capacidade?",
+        "Quem pode pedir tempo de computação?",
+        "Quanto custa manter a máquina ligada?"
+      ],
+      "instagram": "Reels dentro da sala das máquinas.",
+      "youtube": "Visita guiada com um investigador a mostrar um caso concreto."
+    },
+    {
+      "title": "Serviços digitais postos à prova: o que se trata em Coimbra sem ir ao balcão?",
+      "section": "tecnologia",
+      "format": "reportagem",
+      "priority": 2,
+      "angle": "Testar na prática serviços online da câmara, dos transportes e da universidade e registar o que funciona e o que obriga a deslocação.",
+      "to_confirm": "Lista de serviços disponíveis online à data do teste.",
+      "sources": [
+        "Câmara Municipal de Coimbra",
+        "SMTUC",
+        "Serviços académicos da UC",
+        "Especialista em acessibilidade digital",
+        "Utilizadores"
+      ],
+      "questions": [
+        "Que serviço tentou usar online e desistiu?",
+        "Quantos pedidos chegam por via digital?",
+        "Os sites cumprem as regras de acessibilidade?"
+      ],
+      "instagram": "Carrossel com a nota de cada serviço; stories com gravação do ecrã.",
+      "youtube": "Vídeo «Tentámos tratar de tudo sem sair de casa»."
+    },
+    {
+      "title": "Guia das salas independentes: onde se ouve música ao vivo em Coimbra",
+      "section": "cultura",
+      "format": "reportagem",
+      "priority": 2,
+      "angle": "Mapear as salas, o tipo de programação, os preços e as dificuldades de quem as mantém abertas.",
+      "to_confirm": "Salas em atividade e programação do mês de publicação.",
+      "sources": [
+        "Programadores de salas independentes",
+        "Salão Brazil / Jazz ao Centro Clube",
+        "TAGV e Convento São Francisco",
+        "Bandas locais"
+      ],
+      "questions": [
+        "Como se paga uma noite de concerto?",
+        "Que público aparece?",
+        "O que mudou desde a pandemia?"
+      ],
+      "instagram": "Carrossel-mapa das salas; reels de um concerto.",
+      "youtube": "Série curta «Uma sala por semana»."
+    },
+    {
+      "title": "Fado de Coimbra: quem são os novos intérpretes?",
+      "section": "cultura",
+      "format": "reportagem",
+      "priority": 2,
+      "angle": "Conhecer a geração que está a pegar na tradição, incluindo as vozes que durante décadas ficaram de fora.",
+      "to_confirm": "Grupos e intérpretes em atividade e próximas atuações.",
+      "sources": [
+        "Secção de Fado da AAC",
+        "Casas de fado da cidade",
+        "Jovens guitarristas e cantores",
+        "Investigadores de etnomusicologia"
+      ],
+      "questions": [
+        "Como chegaste ao fado?",
+        "O que pode mudar sem deixar de ser fado de Coimbra?",
+        "Quem vos ouve hoje?"
+      ],
+      "instagram": "Reels com 30 segundos de uma guitarra; carrossel com cinco nomes a seguir.",
+      "youtube": "Sessão acústica filmada com entrevista."
+    },
+    {
+      "title": "Caminhos do Cinema Português: o que o festival diz sobre o cinema que se faz cá",
+      "section": "cultura",
+      "format": "reportagem",
+      "priority": 2,
+      "angle": "Aproveitar o festival para perguntar que filmes se fazem em Portugal, quem os vê e que lugar tem Coimbra nesse circuito.",
+      "to_confirm": "Datas e programa da edição deste ano.",
+      "sources": [
+        "Organização do festival",
+        "Realizadores selecionados",
+        "Estudantes de Estudos Artísticos",
+        "Público"
+      ],
+      "questions": [
+        "Que filme desta edição não podemos perder?",
+        "Como se financia um festival em Coimbra?",
+        "O público jovem aparece?"
+      ],
+      "instagram": "Carrossel com cinco filmes; stories diários durante o festival.",
+      "youtube": "Entrevistas rápidas à saída das sessões."
+    },
+    {
+      "title": "Quanto ganha quem faz cultura em Coimbra?",
+      "section": "cultura",
+      "format": "reportagem",
+      "priority": 2,
+      "angle": "Ouvir artistas e estruturas sobre rendimentos, contratos e apoios, e comparar com o que a cidade investe.",
+      "to_confirm": "Valores dos apoios municipais e nacionais atribuídos a estruturas de Coimbra.",
+      "sources": [
+        "Companhias de teatro e estruturas locais",
+        "Artistas independentes",
+        "Câmara Municipal (cultura)",
+        "DGArtes"
+      ],
+      "questions": [
+        "Vives só da cultura?",
+        "Quanto pesa o apoio público no vosso orçamento?",
+        "O que mudaria já amanhã?"
+      ],
+      "instagram": "Carrossel com números; reels de bastidores.",
+      "youtube": "Conversa a três vozes para o podcast."
+    },
+    {
+      "title": "Académica: o caminho de volta e as contas do clube",
+      "section": "desporto",
+      "format": "reportagem",
+      "priority": 2,
+      "angle": "Cruzar a situação desportiva com a financeira para perceber o que separa a Briosa do regresso aos campeonatos profissionais.",
+      "to_confirm": "Divisão e classificação atuais e último relatório e contas.",
+      "sources": [
+        "Direção da Académica/OAF",
+        "Sócios e claque",
+        "Equipa técnica",
+        "Jornalistas desportivos locais"
+      ],
+      "questions": [
+        "Qual é o plano e em quanto tempo?",
+        "Como estão as contas?",
+        "O que afastou e o que traria de volta os adeptos?"
+      ],
+      "instagram": "Carrossel com a linha do tempo desde a última época na primeira liga; reels num dia de jogo.",
+      "youtube": "Reportagem de bancada num jogo em casa."
+    },
+    {
+      "title": "Desporto universitário: muitas secções, que condições?",
+      "section": "desporto",
+      "format": "reportagem",
+      "priority": 2,
+      "angle": "Visitar secções desportivas da AAC e ver o estado das instalações, os custos para os atletas e os resultados.",
+      "to_confirm": "Número de secções e atletas inscritos e obras previstas no Estádio Universitário.",
+      "sources": [
+        "Secções desportivas da AAC",
+        "Estudantes-atletas",
+        "UC (Estádio Universitário)",
+        "FADU"
+      ],
+      "questions": [
+        "Quanto pagam os atletas para competir?",
+        "Que instalações precisam de obras?",
+        "Que modalidade está a crescer?"
+      ],
+      "instagram": "Reels «Uma modalidade em 30 segundos»; carrossel com resultados.",
+      "youtube": "Série curta por modalidade."
+    },
+    {
+      "title": "Estudar e competir: a vida de um estudante-atleta de alto rendimento",
+      "section": "desporto",
+      "format": "entrevista",
+      "priority": 2,
+      "angle": "Acompanhar um dia de um atleta que concilia treinos, competições e exames.",
+      "to_confirm": "Estatuto de estudante-atleta em vigor na UC.",
+      "sources": [
+        "Estudantes com estatuto de atleta",
+        "Treinadores",
+        "Gabinete de apoio da UC",
+        "FADU"
+      ],
+      "questions": [
+        "Como é a tua semana?",
+        "A universidade facilita ou complica?",
+        "O que sacrificaste?"
+      ],
+      "instagram": "Reels «24 horas com…».",
+      "youtube": "Perfil em vídeo de 4 minutos."
+    },
+    {
+      "title": "Primeiro emprego em Coimbra: quanto se paga e em que sectores?",
+      "section": "economia",
+      "format": "reportagem",
+      "priority": 2,
+      "angle": "Recolher ofertas reais e testemunhos para mostrar salários de entrada e os sectores que mais contratam.",
+      "to_confirm": "Ofertas publicadas no período da reportagem e dados do IEFP para o concelho.",
+      "sources": [
+        "IEFP",
+        "Empresas que estão a recrutar",
+        "Recém-licenciados",
+        "FEUC"
+      ],
+      "questions": [
+        "Qual foi o teu primeiro salário?",
+        "Que perfis são mais difíceis de contratar?",
+        "Dá para viver sozinho com esse ordenado?"
+      ],
+      "instagram": "Carrossel «Salários de entrada em Coimbra».",
+      "youtube": "Vídeo com três primeiros recibos de vencimento comentados."
+    },
+    {
+      "title": "Trabalhar para pagar o curso: o retrato dos trabalhadores-estudantes",
+      "section": "economia",
+      "format": "reportagem",
+      "priority": 2,
+      "angle": "Mostrar quem trabalha enquanto estuda, em quê, com que contrato e com que efeito nas notas.",
+      "to_confirm": "Número de estudantes com estatuto de trabalhador-estudante na UC.",
+      "sources": [
+        "Trabalhadores-estudantes",
+        "Empregadores da restauração e comércio",
+        "Provedor do Estudante",
+        "ACT e sindicatos"
+      ],
+      "questions": [
+        "Quantas horas trabalhas por semana?",
+        "Tens contrato?",
+        "Os docentes respeitam o teu estatuto?"
+      ],
+      "instagram": "Reels «O meu turno, a minha aula»; caixa de perguntas.",
+      "youtube": "Reportagem a acompanhar um turno da noite."
+    },
+    {
+      "title": "Quanto vale o turismo para a cidade e quem fica com a receita?",
+      "section": "economia",
+      "format": "explicador",
+      "priority": 2,
+      "angle": "Somar visitantes, bilheteira e dormidas e perceber como esse dinheiro chega, ou não, a quem vive na Alta e na Baixa.",
+      "to_confirm": "Números de visitantes da UC, dormidas no concelho e existência de taxa turística.",
+      "sources": [
+        "Turismo da Universidade de Coimbra",
+        "Câmara Municipal",
+        "Turismo Centro de Portugal",
+        "Hotelaria e comércio",
+        "Moradores da Alta"
+      ],
+      "questions": [
+        "Quantas pessoas visitam a universidade por ano?",
+        "Para onde vai a receita?",
+        "Viver ao lado de um monumento é bom ou mau?"
+      ],
+      "instagram": "Carrossel «O turismo em números».",
+      "youtube": "Explicador gravado no Paço das Escolas."
+    },
+    {
+      "title": "Bolseiros de investigação: fazer ciência com contrato a prazo",
+      "section": "ciencia",
+      "format": "reportagem",
+      "priority": 2,
+      "angle": "Dar rosto à precariedade científica em Coimbra e explicar o que distingue uma bolsa de um contrato.",
+      "to_confirm": "Número de bolseiros e de investigadores contratados na UC e regras em vigor.",
+      "sources": [
+        "Associação dos Bolseiros de Investigação Científica",
+        "Bolseiros de vários centros",
+        "FCT",
+        "Reitoria"
+      ],
+      "questions": [
+        "Há quantos anos vives de bolsas?",
+        "O que acontece quando a bolsa acaba?",
+        "O que mudou com as novas regras?"
+      ],
+      "instagram": "Carrossel «Bolsa não é contrato».",
+      "youtube": "Conversa com dois investigadores em fases diferentes da carreira."
+    },
+    {
+      "title": "O Mondego e as cheias: o que diz a ciência sobre o risco em Coimbra",
+      "section": "ciencia",
+      "format": "reportagem",
+      "priority": 2,
+      "angle": "Explicar, com investigadores, porque o rio transborda, o que foi feito desde as últimas cheias e o que ainda falta.",
+      "to_confirm": "Cronologia das cheias mais recentes e obras realizadas nos diques.",
+      "sources": [
+        "Investigadores de hidráulica e de geografia da UC",
+        "Agência Portuguesa do Ambiente",
+        "Proteção Civil",
+        "Agricultores do Baixo Mondego",
+        "Câmara Municipal"
+      ],
+      "questions": [
+        "O risco está a aumentar?",
+        "Que obras foram feitas e chegam?",
+        "O que deve fazer quem vive em zona de cheia?"
+      ],
+      "instagram": "Carrossel com mapa das zonas de risco.",
+      "youtube": "Reportagem junto ao rio com um especialista."
+    },
+    {
+      "title": "Saúde mental dos estudantes: quanto tempo se espera por uma consulta?",
+      "section": "ciencia",
+      "format": "reportagem",
+      "priority": 2,
+      "angle": "Medir a resposta dos serviços de apoio psicológico e ouvir estudantes, com anonimato garantido sempre que pedido.",
+      "to_confirm": "Tempos de espera e número de psicólogos nos serviços da universidade.",
+      "sources": [
+        "Serviços de psicologia dos SASUC",
+        "Gabinetes de apoio das faculdades",
+        "Estudantes",
+        "Ordem dos Psicólogos"
+      ],
+      "questions": [
+        "Quanto tempo esperaste pela primeira consulta?",
+        "Quantos pedidos recebem por mês?",
+        "Onde procurar ajuda já hoje?"
+      ],
+      "instagram": "Carrossel com contactos de apoio; stories com perguntas anónimas.",
+      "youtube": "Conversa com uma psicóloga para o podcast."
+    },
+    {
+      "title": "O Bode à Conversa #1: Coimbra está a ficar cara de mais para quem estuda?",
+      "section": "opiniao",
+      "format": "podcast",
+      "priority": 2,
+      "angle": "Primeiro episódio do programa, a partir da reportagem de estreia: três convidados, um tema, 25 a 40 minutos.",
+      "to_confirm": "Disponibilidade dos convidados e local de gravação.",
+      "sources": [
+        "Dirigente da AAC",
+        "Investigador em habitação",
+        "Estudante deslocado"
+      ],
+      "questions": [
+        "Qual é o número que melhor explica o problema?",
+        "Quem pode resolver e o que está a fazer?",
+        "O que faria amanhã se decidisse?"
+      ],
+      "instagram": "Três cortes de 45 segundos para reels.",
+      "youtube": "Episódio completo em vídeo e áudio."
+    },
+    {
+      "title": "Grande entrevista: a Reitoria e os próximos anos da Universidade",
+      "section": "opiniao",
+      "format": "entrevista",
+      "priority": 2,
+      "angle": "Entrevista de fundo sobre financiamento, propinas, alojamento, IA no ensino e o lugar da UC na cidade.",
+      "to_confirm": "Agenda da Reitoria e temas quentes na semana da entrevista.",
+      "sources": [
+        "Reitoria da Universidade de Coimbra"
+      ],
+      "questions": [
+        "Qual é a maior ameaça à universidade?",
+        "Quantas camas novas haverá e quando?",
+        "Como deve a UC lidar com a IA nas avaliações?"
+      ],
+      "instagram": "Carrossel com cinco frases da entrevista.",
+      "youtube": "Entrevista integral em vídeo."
+    },
+    {
+      "title": "Carta de quem chegou: o primeiro semestre contado por caloiros",
+      "section": "opiniao",
+      "format": "opinião",
+      "priority": 2,
+      "angle": "Três textos na primeira pessoa, assinados e identificados como opinião: um deslocado, um internacional e um trabalhador-estudante.",
+      "to_confirm": "Autorização de publicação de cada autor.",
+      "sources": [
+        "Caloiro deslocado",
+        "Caloiro internacional",
+        "Caloiro trabalhador-estudante"
+      ],
+      "questions": [
+        "O que esperavas e o que encontraste?",
+        "Qual foi o dia mais difícil?",
+        "O que dirias a quem chega para o ano?"
+      ],
+      "instagram": "Reels com cada autor a ler um excerto.",
+      "youtube": "Leitura em vídeo dos três textos."
+    }
+  ]
+}
