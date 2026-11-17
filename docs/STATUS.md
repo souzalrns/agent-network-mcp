@@ -39,6 +39,12 @@ com agentes de projeto que têm **systemPrompt + contexto real de negócio**.
 |---|---|---|
 | O Bode | `publications/o-bode/seed.json` (marca, 8 editorias, 5 páginas, 35 pautas) | Configuração pronta; sem base de dados de produção nem deploy. A aplicação vive em `network-agents-setup/verticals/editorial` (item E-005 do PENDENCIAS) |
 
+Dependência entre os dois repositórios: a sementeira é **inicial** (numa publicação que já existe só actualiza nome,
+slogan, descrição, cores e nomes dos agentes; editorias, páginas e pautas só entram se ainda não existirem; o resto
+configura-se na redação). Antes de semear: `node db/validate-seed.mjs <caminho>/publications/o-bode/seed.json` no
+`verticals/editorial`; o `db/seed.mjs` recusa ficheiros inválidos. O `tests/seed.test.ts` da vertical valida este
+ficheiro automaticamente quando os dois repositórios estão lado a lado (ou com `EDITORIAL_SEED_REAL`).
+
 ## O que NÃO está aqui
 
 - Motor genérico / demo pública → `network-agents-setup`
@@ -69,4 +75,5 @@ node scripts/document-agents.js
 | 05/10/2026 | H-005/H-006 (PENDENCIAS do `network-agents-setup`): as Actions agendadas estão activas, e a linha "desligado" foi corrigida; o README perdeu os links mortos e a nota de TODO; `LICENSE` MIT; `diagnostico-vm.txt` → `docs/ops/diagnostico-vm-2026.txt` (hoje fora da árvore; ver o §13 do histórico do NAS); actions pinadas por SHA em versões Node 24 (H-003) |
 | 25/10/2026 | H-01: `dispatch_code_task` falha fechada (S20, `lib/codeTasks.js`); README com 34 agentes e sem prometer execução remota; números verificados por teste; planos antigos → `docs/archive/` |
 | 25/10/2026 | H-01, opção B (fonte única do passado): os 5 documentos de `docs/archive/` saem da árvore; ficha e link permanente no §13 do `PENDENCIAS-HISTORICO.md` do NAS; `tests/docsNumbers.test.mjs` impede que `docs/archive/` volte |
+| 17/11/2026 | E-005: sementeira d'O Bode validada pelo `db/validate-seed.mjs` da vertical (válida; 1 aviso: campo `_nota` ignorado); dependência documentada acima |
 | 17/11/2026 | E-005: `publications/o-bode/seed.json`, a configuração d'O Bode para a vertical editorial do `network-agents-setup` (marca e pautas aqui, código lá) |
