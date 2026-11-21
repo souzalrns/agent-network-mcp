@@ -98,7 +98,7 @@
       "slug": "privacidade",
       "title": "Política de privacidade",
       "published": false,
-      "body": "Rascunho: o site não usa cookies de publicidade nem de seguimento. A redação usa um cookie de sessão."
+      "body": "**Rascunho a validar juridicamente antes de publicar.** Os campos entre [ ] têm de ser preenchidos pela direção.\n\n## Quem trata os dados\n\n[Entidade proprietária de O Bode, NIF e morada]. Contacto para questões de privacidade: [email].\n\n## O que recolhemos e porquê\n\n- **Leitores do site:** não usamos cookies de publicidade nem de seguimento, nem ferramentas de estatística de terceiros. O servidor regista dados técnicos dos pedidos (endereço IP, página, data) para segurança e funcionamento, durante o período de retenção do fornecedor de alojamento.\n- **Newsletter:** guardamos o email, a data da inscrição e o texto do consentimento que aceitaste, só para te enviar a newsletter. Cada envio tem um link para anular a inscrição; ao anular, deixamos de enviar e registamos a data.\n- **Redação:** quem trabalha na redação tem uma conta (nome, email e palavra-passe guardada de forma irreversível) e um cookie de sessão, estritamente necessário para entrar.\n- **Fontes jornalísticas:** os dados das fontes são protegidos pelo sigilo profissional e só estão acessíveis a quem as registou e à direção.\n\n## Onde estão os dados\n\nAlojamento da aplicação na Vercel e base de dados no Neon, na região de Frankfurt (União Europeia).\n\n## Os teus direitos\n\nPodes pedir acesso, correção ou apagamento dos teus dados, ou opor-te ao tratamento, através de [email]. Tens também o direito de apresentar queixa à Comissão Nacional de Proteção de Dados (CNPD).\n"
     }
   ],
   "stories": [
